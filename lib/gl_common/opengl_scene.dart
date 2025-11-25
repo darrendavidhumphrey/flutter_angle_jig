@@ -35,7 +35,7 @@ abstract class OpenGLScene with LoggableClass {
   void init(BuildContext context, RenderingContext gl) {
     this.gl = gl;
     mvMatrix = Matrix4.identity();
-    gl.clearColor(0, 0, 0, 1);
+    gl.clearColor(0, 1, 0, 1);
   }
 
   Size _viewportSize = Size.zero;
