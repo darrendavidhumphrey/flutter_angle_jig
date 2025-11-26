@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_angle/desktop/angle.dart';
 import 'package:flutter_angle/shared/options.dart';
+import '../frame_counter.dart';
 import '../logging.dart';
 import 'opengl_scene.dart';
 
@@ -19,6 +20,8 @@ class FlutterAngleManager with LoggableClass {
 
   static final FlutterAngleManager _singleton = FlutterAngleManager._internal();
 
+  late FrameCounterModel frameCounter;
+
   factory FlutterAngleManager() {
     return _singleton;
   }
@@ -30,13 +33,10 @@ class FlutterAngleManager with LoggableClass {
       isInitialized = true;
       await angle.init();
       glIsInitialized = true;
+
       return true;
     }
     return false;
-  }
-
-  void addScene(OpenGLScene scene) {
-    scenes.add(scene);
   }
 
   Future<FlutterAngleTexture?> allocTexture(AngleOptions options) async {
@@ -54,10 +54,14 @@ class FlutterAngleManager with LoggableClass {
       sceneInitialized = true;
     }
   }
+  void initPlatformState(BuildContext context, OpenGLScene scene) {
+   frameCounter = FrameCounterModel();
+   initInternal(context, scene);
+  }
 
-  Future<void> initPlatformState(
+  Future<void> initInternal(
     BuildContext context,
-    List<OpenGLScene> scenes,
+    OpenGLScene scene,
   ) async {
     await init();
 
@@ -66,19 +70,19 @@ class FlutterAngleManager with LoggableClass {
     }
 
     try {
-      for (var scene in scenes) {
-        final options = AngleOptions(
-          width: scene.textureWidth(),
-          height: scene.textureHeight(),
-          dpr: 1,
-          antialias: true,
-          useSurfaceProducer: true,
-        );
+      final options = AngleOptions(
+        width: scene.textureWidth(),
+        height: scene.textureHeight(),
+        dpr: 1,
+        antialias: true,
+        useSurfaceProducer: true,
+      );
 
-        // Allocate an open GL texture for each scene
-        var textureId = await allocTexture(options);
-        scene.renderToTextureId = textureId;
-      }
+      // Allocate an open GL texture for each scene
+      var textureId = await allocTexture(options);
+      scene.renderToTextureId = textureId;
+      scenes.add(scene);
+
       textureInitialized = true;
     } on PlatformException catch (e) {
       logError("initPlatformState: ${e.message}");
