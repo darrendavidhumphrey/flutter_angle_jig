@@ -3,21 +3,21 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/desktop/angle.dart';
 import 'package:provider/provider.dart';
-import 'frame_counter.dart';
-import 'gl_common/flutter_angle_manager.dart';
-import 'gl_common/opengl_scene.dart';
-import 'logging.dart';
+import '../frame_counter.dart';
+import '../gl_common/flutter_angle_jig.dart';
+import '../gl_common/angle_scene.dart';
+import '../logging.dart';
 
-class OpenGLRenderToTextureWidget extends StatefulWidget {
-  final OpenGLScene scene;
-  const OpenGLRenderToTextureWidget({required this.scene, super.key});
+class RenderToTexture extends StatefulWidget {
+  final AngleScene scene;
+  const RenderToTexture({required this.scene, super.key});
   @override
-  OpenGLRenderToTextureWidgetState createState() =>
-      OpenGLRenderToTextureWidgetState();
+  RenderToTextureState createState() =>
+      RenderToTextureState();
 }
 
-class OpenGLRenderToTextureWidgetState
-    extends State<OpenGLRenderToTextureWidget>
+class RenderToTextureState
+    extends State<RenderToTexture>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin, LoggableClass {
   Size screenSize = Size.zero;
   bool windowResized = false;
@@ -51,17 +51,17 @@ class OpenGLRenderToTextureWidgetState
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
-      value: FlutterAngleManager().frameCounter,
+      value: FlutterAngleJig().frameCounter,
       child: Consumer<FrameCounterModel>(
         builder: (context, counter, child) {
           return LayoutBuilder(
             builder: (context, constraints) {
-              FlutterAngleTexture? textureId = FlutterAngleManager().scenes[widget.scene];
+              FlutterAngleTexture? textureId = FlutterAngleJig().scenes[widget.scene];
 
               if (textureId != null) {
                 bool firstPaint = !widget.scene.isInitialized;
                 if (firstPaint) {
-                  FlutterAngleManager().initScene(context, widget.scene);
+                  FlutterAngleJig().initScene(context, widget.scene);
 
                   logTrace(
                     "Start RenderToTexture Ticker for scene of type ${widget.scene.runtimeType}",
@@ -86,7 +86,7 @@ class OpenGLRenderToTextureWidgetState
                     "Scheduling a refresh because texture is not initialized",
                   );
 
-                  FlutterAngleManager().allocTextureForScene(widget.scene);
+                  FlutterAngleJig().allocTextureForScene(widget.scene);
                   Provider.of<FrameCounterModel>(
                     context,
                     listen: false,

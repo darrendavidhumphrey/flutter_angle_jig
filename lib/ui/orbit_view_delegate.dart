@@ -1,12 +1,12 @@
 import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:vector_math/vector_math_64.dart';
-import '../gl_common/opengl_scene.dart';
-import '../gl_common/opengl_util.dart';
+import '../gl_common/angle_scene.dart';
+import '../gl_common/angle_util.dart';
 import '../util.dart';
-import 'navigation_delegate.dart';
+import 'angle_scene_navigation_delegate.dart';
 
-class OrbitView implements NavigationDelegate {
+class OrbitView implements AngleSceneNavigationDelegate {
   static const double _initialYaw = 0;
   static const double _initialPitch = 0;
 
@@ -33,7 +33,7 @@ class OrbitView implements NavigationDelegate {
   final Matrix4 _projectionMatrix = Matrix4.identity();
   Matrix4 _viewMatrix = Matrix4.identity();
 
-  OpenGLScene? scene;
+  AngleScene? scene;
 
 
   OrbitView() {
@@ -65,11 +65,10 @@ class OrbitView implements NavigationDelegate {
   }
 
   @override
-  void setScene(OpenGLScene scene) {
+  void setScene(AngleScene scene) {
     this.scene = scene;
     updateSceneMatrices();
   }
-
 
   @override
   void onPointerDown(PointerDownEvent event) {
@@ -78,7 +77,6 @@ class OrbitView implements NavigationDelegate {
     _pitchStart = pitch;
     updateSceneMatrices();
   }
-
   @override
   void onPointerMove(PointerMoveEvent event) {
     final deltaX = _dragStart.dx - event.localPosition.dx;

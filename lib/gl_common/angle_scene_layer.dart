@@ -1,10 +1,10 @@
 import 'dart:ui';
 import 'package:flutter_angle/desktop/wrapper.dart';
 import 'package:vector_math/vector_math_64.dart';
-import 'opengl_scene.dart';
+import 'angle_scene.dart';
 
-abstract class OpenGLSceneLayer {
-  late OpenGLScene parent;
+abstract class AngleSceneLayer {
+  late AngleScene parent;
   late RenderingContext gl;
 
   bool _needsRebuild = true;
@@ -13,7 +13,7 @@ abstract class OpenGLSceneLayer {
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
-  OpenGLSceneLayer();
+  AngleSceneLayer();
 
   Size _viewportSize = Size.zero;
   Size get viewportSize => _viewportSize;

@@ -1,19 +1,19 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_angle_jig/gl_common/opengl_scene.dart';
-import 'package:flutter_angle_jig/opengl_render_to_texture.dart';
-import 'package:flutter_angle_jig/ui/navigation_delegate.dart';
+import 'package:flutter_angle_jig/gl_common/angle_scene.dart';
+import 'package:flutter_angle_jig/ui/render_to_texture.dart';
+import 'package:flutter_angle_jig/ui/angle_scene_navigation_delegate.dart';
 
-class NavigationWidget extends StatefulWidget {
-  final OpenGLScene scene;
-  final NavigationDelegate navigationDelegate;
-  const NavigationWidget({super.key, required this.scene, required this.navigationDelegate});
+class InteractiveRenderToTexture extends StatefulWidget {
+  final AngleScene scene;
+  final AngleSceneNavigationDelegate navigationDelegate;
+  const InteractiveRenderToTexture({super.key, required this.scene, required this.navigationDelegate});
 
   @override
   OrbitViewState createState() => OrbitViewState();
 }
 
-class OrbitViewState extends State<NavigationWidget> {
+class OrbitViewState extends State<InteractiveRenderToTexture> {
   late FocusNode _focusNode;
 
 
@@ -66,7 +66,7 @@ class OrbitViewState extends State<NavigationWidget> {
           }
         },
 
-        child: OpenGLRenderToTextureWidget(scene: widget.scene),
+        child: RenderToTexture(scene: widget.scene),
       ),
     );
   }

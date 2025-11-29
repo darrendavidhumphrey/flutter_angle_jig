@@ -1,29 +1,36 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_angle/desktop/angle.dart';
+import 'package:flutter_angle/desktop/wrapper.dart';
 import 'package:flutter_angle/shared/options.dart';
+import 'package:flutter_angle_jig/gl_common/shaders/built_in_shaders.dart';
+import 'package:flutter_angle_jig/gl_common/shaders/gl_materials.dart';
+import 'package:flutter_angle_jig/gl_common/texture_manager.dart';
 import '../frame_counter.dart';
 import '../logging.dart';
-import 'opengl_scene.dart';
+import 'bitmap_fonts/bitmap_font_manager.dart';
+import 'angle_scene.dart';
 
-class FlutterAngleManager with LoggableClass {
+class FlutterAngleJig with LoggableClass {
   FlutterAngle angle = FlutterAngle();
   bool isInitialized = false;
   bool glIsInitialized = false;
 
+  bool contextInitialized = false;
+
   static final double renderToTextureSize = 4096;
-  final Map<OpenGLScene, FlutterAngleTexture> scenes = {};
+  final Map<AngleScene, FlutterAngleTexture> scenes = {};
 
   final textures = <FlutterAngleTexture>[];
 
-  static final FlutterAngleManager _singleton = FlutterAngleManager._internal();
+  static final FlutterAngleJig _singleton = FlutterAngleJig._internal();
 
   late FrameCounterModel frameCounter;
 
-  factory FlutterAngleManager() {
+  factory FlutterAngleJig() {
     return _singleton;
   }
 
-  FlutterAngleManager._internal();
+  FlutterAngleJig._internal();
 
   Future<bool> init() async {
     if (!isInitialized) {
@@ -46,17 +53,39 @@ class FlutterAngleManager with LoggableClass {
     return null;
   }
 
-  void initScene(BuildContext context, OpenGLScene scene) {
+  void initScene(BuildContext context, AngleScene scene) {
     if (!scene.isInitialized) {
       scene.init(context, scene.renderToTextureId!.getContext());
     }
   }
-  void initPlatformState(BuildContext context, OpenGLScene scene) {
+  void initPlatformState() {
    frameCounter = FrameCounterModel();
    init();
   }
 
-  Future<bool> allocTextureForScene(OpenGLScene scene) async {
+  void initDefaultMaterial() {
+    Color defaultGrey = Colors.grey[200]!;
+    Color defaultSpecular = Colors.black;
+    const double defaultShininess = 5;
+
+    GlMaterialManager().setDefaultMaterial(
+      GlMaterial(defaultGrey, defaultGrey, defaultSpecular, defaultShininess),
+    );
+  }
+
+  void initContext(RenderingContext gl) {
+
+    if (!contextInitialized) {
+      TextureManager().init(gl);
+      initDefaultMaterial();
+
+      BuiltInShaders().init(gl);
+      BitmapFontManager().createDefaultFont();
+      contextInitialized = true;
+    }
+  }
+
+  Future<bool> allocTextureForScene(AngleScene scene) async {
     final options = AngleOptions(
       width: scene.textureWidth(),
       height: scene.textureHeight(),

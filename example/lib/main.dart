@@ -1,7 +1,7 @@
-import 'package:flutter_angle_jig/ui/navigation_widget.dart';
+import 'package:flutter_angle_jig/ui/interactive_render_to_texture.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_angle_jig/gl_common/flutter_angle_manager.dart';
+import 'package:flutter_angle_jig/gl_common/flutter_angle_jig.dart';
 import 'package:flutter_angle_jig/logging.dart';
 import 'package:flutter_angle_jig/ui/orbit_view_delegate.dart';
 import 'simple_example_canvas.dart';
@@ -16,6 +16,7 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterAngleJig().initPlatformState();
   runApp(TestApp());
 }
 
@@ -27,29 +28,31 @@ class TestApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final scene = SimpleExampleCanvas();
     final OrbitView orbitView = OrbitView();
+    FlutterAngleJig().allocTextureForScene(scene);
 
     final OrbitView orbitView2 = OrbitView();
     final scene2 = SimpleExampleCanvas();
-    FlutterAngleManager().initPlatformState(context, scene);
-    FlutterAngleManager().allocTextureForScene(scene2);
+    FlutterAngleJig().allocTextureForScene(scene2);
+
     return MaterialApp(
         title: 'test',
         home: Stack(
           children: [
 
+            // TODO: Rename NavigationWidget to something more intuitive
             Positioned(
               left: 0,
               child: SizedBox(
                 width: 500,
                   height: 500,
-                  child: NavigationWidget(navigationDelegate: orbitView, scene: scene)),
+                  child: InteractiveRenderToTexture(navigationDelegate: orbitView, scene: scene)),
             ),
             Positioned(
               left: 500,
               child: SizedBox(
                   width: 500,
                   height: 500,
-                  child: NavigationWidget(navigationDelegate: orbitView2, scene: scene2)),
+                  child: InteractiveRenderToTexture(navigationDelegate: orbitView2, scene: scene2)),
             ),
           ],
         )

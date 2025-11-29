@@ -1,9 +1,9 @@
 import 'package:flutter/gestures.dart';
-import '../gl_common/opengl_scene.dart';
+import '../gl_common/angle_scene.dart';
 
-abstract class NavigationDelegate {
+abstract class AngleSceneNavigationDelegate {
 
-  void setScene(OpenGLScene scene);
+  void setScene(AngleScene scene);
 
   void onPointerDown(PointerDownEvent event);
   void onPointerMove(PointerMoveEvent event);

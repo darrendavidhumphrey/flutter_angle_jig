@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
 import '../logging.dart';
-import 'flutter_angle_manager.dart';
-import 'opengl_scene_layer.dart';
+import 'flutter_angle_jig.dart';
+import 'angle_scene_layer.dart';
 
-abstract class OpenGLScene with LoggableClass {
+abstract class AngleScene with LoggableClass {
   late RenderingContext gl;
   /// Perspective matrix
   late Matrix4 pMatrix;
@@ -12,13 +12,14 @@ abstract class OpenGLScene with LoggableClass {
   /// Model-View matrix.
   late Matrix4 mvMatrix;
 
-  final List<OpenGLSceneLayer> layers =[];
+  final List<AngleSceneLayer> layers =[];
   List<Matrix4> mvStack = <Matrix4>[];
-  OpenGLScene();
+  AngleScene();
 
   bool forceRepaint = true;
   FlutterAngleTexture? renderToTextureId;
   bool isInitialized = false;
+  bool isPaused = false;
 
   final Stopwatch stopwatch = Stopwatch();
   int frameCount=0;
@@ -27,14 +28,15 @@ abstract class OpenGLScene with LoggableClass {
 
 
   int textureWidth() {
-    return FlutterAngleManager.renderToTextureSize.toInt();
+    return FlutterAngleJig.renderToTextureSize.toInt();
   }
   int textureHeight() {
-    return FlutterAngleManager.renderToTextureSize.toInt();
+    return FlutterAngleJig.renderToTextureSize.toInt();
   }
 
   void init(BuildContext context, RenderingContext gl) {
     this.gl = gl;
+    FlutterAngleJig().initContext(gl);
     mvMatrix = Matrix4.identity();
     gl.clearColor(0, 1, 0, 1);
     isInitialized = true;
@@ -63,24 +65,24 @@ abstract class OpenGLScene with LoggableClass {
   /// Pop the last matrix off the stack and set the Model View matrix.
   void mvPopMatrix() => mvMatrix = mvStack.removeLast();
 
-  void addLayer(OpenGLSceneLayer layer) {
+  void addLayer(AngleSceneLayer layer) {
     layers.add(layer);
     layer.parent = this;
   }
 
   void rebuildLayers(RenderingContext gl,DateTime now) {
-    for (OpenGLSceneLayer layer in layers) {
+    for (AngleSceneLayer layer in layers) {
       layer.rebuild(gl,now);
     }
   }
   void drawLayers() {
-    for (OpenGLSceneLayer layer in layers) {
+    for (AngleSceneLayer layer in layers) {
       layer.draw(pMatrix, mvMatrix);
     }
   }
 
   bool needsRebuild() {
-    for (OpenGLSceneLayer layer in layers) {
+    for (AngleSceneLayer layer in layers) {
       if (layer.needsRebuild) {
         return true;
       }
@@ -91,6 +93,10 @@ abstract class OpenGLScene with LoggableClass {
   Future<void> renderSceneToTexture(_) async {
 
     if (renderToTextureId == null) {
+      return;
+    }
+
+    if (isPaused) {
       return;
     }
 
