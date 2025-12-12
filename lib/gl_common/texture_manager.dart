@@ -1,6 +1,4 @@
-import 'package:flutter_angle/desktop/wrapper.dart';
-import 'package:flutter_angle/shared/classes.dart';
-import 'package:flutter_angle/shared/webgl.dart';
+import 'package:flutter_angle/flutter_angle.dart';
 
 class TextureManager {
   late RenderingContext gl;

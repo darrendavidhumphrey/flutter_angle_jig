@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_angle/desktop/wrapper.dart';
-import 'package:flutter_angle/shared/webgl.dart';
+import 'package:flutter_angle/flutter_angle.dart';
 import 'package:flutter_angle_jig/gl_common/angle_scene.dart';
 import 'package:flutter_angle_jig/gl_common/shaders/built_in_shaders.dart';
 import 'package:flutter_angle_jig/gl_common/shaders/grid_shader.dart';
@@ -61,7 +60,7 @@ class SimpleExampleCanvas extends AngleScene {
 
   @override
   void drawScene() {
-    gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    gl.clearColor(1.0, 0.0, 1.0, 1.0);
 
     gl.clear(WebGL.COLOR_BUFFER_BIT | WebGL.DEPTH_BUFFER_BIT);
     gl.enable(WebGL.DEPTH_TEST);

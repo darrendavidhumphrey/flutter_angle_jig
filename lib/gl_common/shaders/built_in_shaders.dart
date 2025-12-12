@@ -1,4 +1,4 @@
-import 'package:flutter_angle/desktop/wrapper.dart';
+import 'package:flutter_angle/flutter_angle.dart';
 import 'package:flutter_angle_jig/gl_common/shaders/pattern_shaders.dart';
 import 'package:vector_math/vector_math_64.dart';
 

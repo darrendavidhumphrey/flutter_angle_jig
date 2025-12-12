@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:flutter_angle/desktop/wrapper.dart';
+import 'package:flutter_angle/flutter_angle.dart';
 import 'package:vector_math/vector_math_64.dart';
 import 'angle_scene.dart';
 

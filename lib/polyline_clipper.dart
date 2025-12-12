@@ -118,7 +118,6 @@ class PolylineClipper {
       return null;
     }
 
-
     List<Vector2> clippedPolyline = [];
 
     final double epsilonSq = epsilon*epsilon;

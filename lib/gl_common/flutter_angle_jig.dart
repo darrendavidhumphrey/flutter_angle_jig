@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_angle/desktop/angle.dart';
-import 'package:flutter_angle/desktop/wrapper.dart';
-import 'package:flutter_angle/shared/options.dart';
+import 'package:flutter_angle/flutter_angle.dart';
 import 'package:flutter_angle_jig/gl_common/shaders/built_in_shaders.dart';
 import 'package:flutter_angle_jig/gl_common/shaders/gl_materials.dart';
 import 'package:flutter_angle_jig/gl_common/texture_manager.dart';

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_angle/desktop/angle.dart';
+import 'package:flutter_angle/flutter_angle.dart';
 import 'package:provider/provider.dart';
 import '../frame_counter.dart';
 import '../gl_common/flutter_angle_jig.dart';
