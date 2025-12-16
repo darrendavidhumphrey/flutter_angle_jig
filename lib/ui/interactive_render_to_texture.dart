@@ -3,11 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_angle_jig/gl_common/angle_scene.dart';
 import 'package:flutter_angle_jig/ui/render_to_texture.dart';
 import 'package:flutter_angle_jig/ui/angle_scene_navigation_delegate.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 class InteractiveRenderToTexture extends StatefulWidget {
   final AngleScene scene;
   final AngleSceneNavigationDelegate navigationDelegate;
-  const InteractiveRenderToTexture({super.key, required this.scene, required this.navigationDelegate});
+  final bool automaticallyPause;
+  const InteractiveRenderToTexture({
+    super.key,
+    this.automaticallyPause = true,
+    required this.scene,
+    required this.navigationDelegate,
+  });
 
   @override
   OrbitViewState createState() => OrbitViewState();
@@ -15,12 +22,15 @@ class InteractiveRenderToTexture extends StatefulWidget {
 
 class OrbitViewState extends State<InteractiveRenderToTexture> {
   late FocusNode _focusNode;
-
+  final Key _pauseKey = UniqueKey();
 
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
+    if (widget.automaticallyPause) {
+      widget.scene.isPaused = true;
+    }
   }
 
   @override
@@ -30,38 +40,46 @@ class OrbitViewState extends State<InteractiveRenderToTexture> {
     // TODO: Force the initial update
     // TODO: Handle all other events
 
-    return GestureDetector(
-      onTapDown: (TapDownDetails event) {
-        widget.navigationDelegate.onTapDown(event);
+    return VisibilityDetector(
+      key: _pauseKey,
+      onVisibilityChanged: (visibilityInfo) {
+        if (widget.automaticallyPause) {
+          bool visible = (visibilityInfo.visibleFraction > 0);
+          widget.scene.isPaused = !visible;
+        }
       },
-      child: Focus(
-        autofocus: true,
-        focusNode: _focusNode,
-        onKeyEvent: (node, event) {
-          // TODO: Handle keyboard event
-          return KeyEventResult.ignored;
+      child: GestureDetector(
+        onTapDown: (TapDownDetails event) {
+          widget.navigationDelegate.onTapDown(event);
         },
-        child: Listener(
-          onPointerSignal: (event) {
-            if (!_focusNode.hasFocus) {
-              _focusNode.requestFocus();
-            }
-            if (event is PointerScrollEvent) {
-              widget.navigationDelegate.onPointerScroll(event);
-            }
+        child: Focus(
+          autofocus: true,
+          focusNode: _focusNode,
+          onKeyEvent: (node, event) {
+            // TODO: Handle keyboard event
+            return KeyEventResult.ignored;
           },
+          child: Listener(
+            onPointerSignal: (event) {
+              if (!_focusNode.hasFocus) {
+                _focusNode.requestFocus();
+              }
+              if (event is PointerScrollEvent) {
+                widget.navigationDelegate.onPointerScroll(event);
+              }
+            },
 
-          onPointerMove: (event) {
-            if (!_focusNode.hasFocus) {
-              _focusNode.requestFocus();
-            }
-            widget.navigationDelegate.onPointerMove(event);
-          },
+            onPointerMove: (event) {
+              if (!_focusNode.hasFocus) {
+                _focusNode.requestFocus();
+              }
+              widget.navigationDelegate.onPointerMove(event);
+            },
 
-          child: RenderToTexture(scene: widget.scene),
+            child: RenderToTexture(scene: widget.scene),
+          ),
         ),
       ),
     );
   }
 }
-

@@ -4,7 +4,7 @@ version: 0.0.1
 homepage: https://pub.dev
 
 environment:
-  sdk: ^3.10.0
+  sdk: ^3.10.4
   flutter: ">=1.17.0"
 
 dependencies:
@@ -13,6 +13,7 @@ dependencies:
   flutter_angle: ^0.3.8
   provider: ^6.1.5+1
   vector_math: ^2.2.0
+  visibility_detector: ^0.4.0+2
   xml: ^6.6.1
 
 dev_dependencies:
