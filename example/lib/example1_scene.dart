@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
 import 'package:fsg/fsg.dart';
 
-class SimpleExampleCanvas extends Scene {
-  SimpleExampleCanvas() :
+class Example1Scene extends Scene {
+  Example1Scene() :
         exampleVbo = VertexBuffer.v3t2();
 
   final VertexBuffer exampleVbo;
   final Size quadExtents = Size(500, 500);
 
-  final Color color1 = Color(0xFFFF0000);
-  final Color color2 = Color(0xFF00FF00);
+  final Color color1 = Colors.red;
+  final Color color2 = Colors.yellow;
 
   @override
   void init(BuildContext context, RenderingContext gl) {
