@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
 import '../logging.dart';
-import 'scene_layer.dart';
+import '../scene_layer.dart';
 
 abstract class ScreenSpaceOverlay extends SceneLayer with LoggableClass {
   final double textureSize;

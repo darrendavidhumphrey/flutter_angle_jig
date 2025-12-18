@@ -1,12 +1,12 @@
 import 'dart:math';
 import 'package:flutter/gestures.dart';
+import 'package:fsg/ui/scene_navigation_delegate.dart';
 import 'package:vector_math/vector_math_64.dart';
-import '../gl_common/scene.dart';
-import '../gl_common/util.dart';
+import '../scene.dart';
 import '../util.dart';
-import 'angle_scene_navigation_delegate.dart';
 
-class OrbitView implements AngleSceneNavigationDelegate {
+
+class OrbitView implements SceneNavigationDelegate {
   static const double _initialYaw = 0;
   static const double _initialPitch = 0;
 
@@ -72,7 +72,6 @@ class OrbitView implements AngleSceneNavigationDelegate {
 
   @override
   void onPointerDown(PointerDownEvent event) {
-    print("onPointerDown");
     _dragStart = event.localPosition;
     _yawStart = yaw;
     _pitchStart = pitch;

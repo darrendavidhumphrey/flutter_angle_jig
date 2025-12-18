@@ -1,10 +1,10 @@
 import 'dart:ui';
 import 'package:flutter_angle/flutter_angle.dart';
 import 'package:vector_math/vector_math_64.dart';
-import '../float32_array_filler.dart';
-import '../polyline.dart';
-import '../solid.dart';
-import '../util.dart';
+import 'float32_array_filler.dart';
+import 'polyline.dart';
+import 'solid.dart';
+import 'util.dart';
 import 'vertex_buffer.dart';
 
 extension SolidFiller on Solid {

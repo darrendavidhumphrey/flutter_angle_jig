@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
-import 'package:fsg/gl_common/shaders/shaders.dart';
-import 'package:fsg/gl_common/shaders/materials.dart';
-import 'package:fsg/gl_common/texture_manager.dart';
-import '../frame_counter.dart';
-import '../logging.dart';
+import 'package:fsg/shaders/shaders.dart';
+import 'package:fsg/shaders/materials.dart';
+import 'package:fsg/texture_manager.dart';
+import 'frame_counter.dart';
+import 'logging.dart';
 import 'bitmap_fonts/bitmap_font_manager.dart';
 import 'scene.dart';
 

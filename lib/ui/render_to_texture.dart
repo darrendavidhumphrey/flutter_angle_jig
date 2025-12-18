@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
 import 'package:provider/provider.dart';
 import '../frame_counter.dart';
-import '../gl_common/fsg.dart';
-import '../gl_common/scene.dart';
+import '../fsg_singleton.dart';
+import '../scene.dart';
 import '../logging.dart';
 
 class RenderToTexture extends StatefulWidget {

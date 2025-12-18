@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter_angle/flutter_angle.dart';
-import '../logging.dart';
+import 'logging.dart';
 
 /// Create a WebGL [Program], compiling [Shader]s from passed in sources and
 /// cache [UniformLocation]s and AttribLocations.

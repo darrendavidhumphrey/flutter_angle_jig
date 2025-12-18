@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
-import 'package:fsg/gl_common/shaders/shaders.dart';
-import 'package:fsg/gl_common/shaders/materials.dart';
-import 'package:fsg/gl_common/shaders/one_light_shader.dart';
-import 'package:fsg/gl_common/vertex_buffer.dart';
+import 'package:fsg/shaders/shaders.dart';
+import 'package:fsg/shaders/materials.dart';
+import 'package:fsg/shaders/one_light_shader.dart';
+import 'package:fsg/vertex_buffer.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
-import '../float32_array_filler.dart';
-import 'fsg.dart';
+import 'float32_array_filler.dart';
+import 'fsg_singleton.dart';
 import 'index_buffer.dart';
 import 'obj_loader.dart';
 

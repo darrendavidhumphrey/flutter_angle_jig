@@ -1,13 +1,13 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:fsg/gl_common/scene.dart';
+import 'package:fsg/scene.dart';
 import 'package:fsg/ui/render_to_texture.dart';
-import 'package:fsg/ui/angle_scene_navigation_delegate.dart';
+import 'package:fsg/ui/scene_navigation_delegate.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class InteractiveRenderToTexture extends StatefulWidget {
   final Scene scene;
-  final AngleSceneNavigationDelegate navigationDelegate;
+  final SceneNavigationDelegate navigationDelegate;
   final bool automaticallyPause;
   const InteractiveRenderToTexture({
     super.key,

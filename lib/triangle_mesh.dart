@@ -5,7 +5,7 @@ import 'package:fsg/polyline.dart';
 import 'package:fsg/util.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3, Ray, Triangle, Vector2;
 
-import 'gl_common/vertex_buffer.dart';
+import 'vertex_buffer.dart';
 
 class TriangleMeshHitDetails {
   final TriangleMesh mesh;

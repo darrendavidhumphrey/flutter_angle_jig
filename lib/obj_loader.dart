@@ -5,7 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_angle/flutter_angle.dart';
 import 'package:vector_math/vector_math_64.dart';
 
-import '../float32_array_filler.dart';
+import 'float32_array_filler.dart';
 class VertexAttributeCombination {
   int positionIndex;
   int texCoordIndex;

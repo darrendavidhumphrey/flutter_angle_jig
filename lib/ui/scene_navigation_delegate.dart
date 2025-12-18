@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
-import '../gl_common/scene.dart';
+import '../scene.dart';
 
-abstract class AngleSceneNavigationDelegate {
+abstract class SceneNavigationDelegate {
 
   void setScene(Scene scene);
 

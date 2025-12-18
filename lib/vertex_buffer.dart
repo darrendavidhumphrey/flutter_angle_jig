@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
-import 'package:fsg/gl_common/shaders/shaders.dart';
+import 'package:fsg/shaders/shaders.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 
-import '../float32_array_filler.dart';
+import 'float32_array_filler.dart';
 
 /// Represents the possible components a vertex can have.
 /// Each component is associated with an OpenGL attribute location.
