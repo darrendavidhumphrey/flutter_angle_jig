@@ -29,19 +29,12 @@ class TestAppState extends State<TestApp> {
   int _pageIndex = 0;
 
   late CheckerBoardScene checkerBoardScene;
-  late CheckerBoardUniformsScene checkerBoardUniformsScene;
-  late OrbitView orbitView;
+
   @override
   void initState() {
     super.initState();
     checkerBoardScene = CheckerBoardScene();
     FSG().allocTextureForScene(checkerBoardScene);
-
-    // TODO: Reuse the same texture???
-    checkerBoardUniformsScene = CheckerBoardUniformsScene();
-    FSG().allocTextureForScene(checkerBoardUniformsScene);
-
-    orbitView = OrbitView();
   }
 
   @override
@@ -58,7 +51,7 @@ class TestAppState extends State<TestApp> {
                     index: _pageIndex,
                     children: [
                       RenderToTexture(scene: checkerBoardScene),
-                      RenderToTexture(scene: checkerBoardUniformsScene),
+                      CheckerBoardUniformsExample(),
                       Container(decoration: BoxDecoration(color: Colors.green)),
                     ],
                   ),

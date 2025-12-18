@@ -10,8 +10,9 @@ class CheckerBoardUniformsScene extends Scene {
   final VertexBuffer exampleVbo;
   final Size quadExtents = Size(500, 500);
 
-  final Color color1 = Colors.blue;
-  final Color color2 = Colors.yellow;
+  Color color1 = Colors.blue;
+  Color color2 = Colors.yellow;
+  double patternScale = 5;
 
   @override
   void init(BuildContext context, RenderingContext gl) {
@@ -35,7 +36,7 @@ class CheckerBoardUniformsScene extends Scene {
 
     shader.setPatternColor1(color1);
     shader.setPatternColor2(color2);
-    shader.setPatternScale(5);
+    shader.setPatternScale(patternScale);
 
     exampleVbo.drawSetup();
     exampleVbo.drawTriangles();
@@ -87,4 +88,61 @@ class CheckerBoardUniformsScene extends Scene {
 
     gl.finish();
   }
+}
+
+class CheckerBoardUniformsExample extends StatefulWidget {
+  const CheckerBoardUniformsExample({super.key});
+
+  @override
+  CheckerBoardUniformsExampleState createState() => CheckerBoardUniformsExampleState();
+}
+
+class CheckerBoardUniformsExampleState extends State<CheckerBoardUniformsExample> {
+  late CheckerBoardUniformsScene checkerBoardUniformsScene;
+
+  @override
+  void initState() {
+    super.initState();
+    checkerBoardUniformsScene = CheckerBoardUniformsScene();
+    FSG().allocTextureForScene(checkerBoardUniformsScene);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        RenderToTexture(scene: checkerBoardUniformsScene),
+        // TODO: Add controls to change uniforms
+        Positioned(
+          bottom: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Text('Pattern Scale'),
+                    Slider(
+                      value: checkerBoardUniformsScene.patternScale,
+                      min: 1,
+                      max: 100,
+                      divisions: 99, // Creates discrete steps for 1, 2, 3... 100
+                      label: checkerBoardUniformsScene.patternScale.round().toString(),
+                      onChanged: (double value) {
+                        setState(() {
+                          checkerBoardUniformsScene.patternScale = value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+      ],
+    );
+  }
+
 }
