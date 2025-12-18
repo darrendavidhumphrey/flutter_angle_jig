@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
-import 'package:flutter_angle_jig/fsg.dart';
+import 'package:fsg/fsg.dart';
 
 class SimpleExampleCanvas extends Scene {
   SimpleExampleCanvas() :

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'dart:math';
-import 'package:flutter_angle_jig/util.dart';
+import 'package:fsg/util.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 class Polyline {

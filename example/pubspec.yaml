@@ -30,7 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_angle_jig:
+  fsg:
     path: ../
 
   # The following adds the Cupertino Icons font to your application.

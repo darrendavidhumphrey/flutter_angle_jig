@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
-import 'package:flutter_angle_jig/gl_common/shaders/shaders.dart';
-import 'package:flutter_angle_jig/gl_common/shaders/materials.dart';
-import 'package:flutter_angle_jig/gl_common/texture_manager.dart';
+import 'package:fsg/gl_common/shaders/shaders.dart';
+import 'package:fsg/gl_common/shaders/materials.dart';
+import 'package:fsg/gl_common/texture_manager.dart';
 import '../frame_counter.dart';
 import '../logging.dart';
 import 'bitmap_fonts/bitmap_font_manager.dart';
@@ -42,7 +42,7 @@ class FSG with LoggableClass {
     return false;
   }
 
-  Future<FlutterAngleTexture?> allocTexture(AngleOptions options) async {
+  Future<FlutterAngleTexture?> allocTexture(AngleOptions options,{double textureSize=4096}) async {
     if (glIsInitialized) {
       var newTexture = await angle.createTexture(options);
       textures.add(newTexture);

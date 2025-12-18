@@ -1,5 +1,5 @@
-import 'package:flutter_angle_jig/polyline.dart';
-import 'package:flutter_angle_jig/util.dart';
+import 'package:fsg/polyline.dart';
+import 'package:fsg/util.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 class ReferenceBox {

@@ -1,12 +1,6 @@
-
-import 'package:flutter_angle/native-array/index.dart';
-import 'package:flutter_angle_jig/polyline.dart';
-import 'package:flutter_angle_jig/triangle_mesh.dart';
+import 'package:fsg/polyline.dart';
+import 'package:fsg/triangle_mesh.dart';
 import 'package:vector_math/vector_math_64.dart';
-
-import 'float32_array_filler.dart';
-import 'gl_common/vertex_buffer.dart';
-import 'gl_common/vertex_buffer_util.dart';
 
 // Represents a generic 3D solid (cube or rectangular solid)
 class Solid {

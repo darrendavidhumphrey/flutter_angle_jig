@@ -1,5 +1,5 @@
-name: flutter_angle_jig
-description: "Quality of life package for using flutter_angle in applications"
+name: fsg
+description: "FlutterSceneGraph - lightweight library for flutter applications"
 version: 0.0.1
 homepage: https://pub.dev
 

@@ -1,8 +1,8 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_angle/native-array/index.dart';
-import 'package:flutter_angle_jig/polyline.dart';
-import 'package:flutter_angle_jig/util.dart';
+import 'package:fsg/polyline.dart';
+import 'package:fsg/util.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3, Ray, Triangle, Vector2;
 
 import 'gl_common/vertex_buffer.dart';

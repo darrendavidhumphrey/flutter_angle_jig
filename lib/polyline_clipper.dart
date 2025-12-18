@@ -1,5 +1,5 @@
 
-import 'package:flutter_angle_jig/polyline.dart';
+import 'package:fsg/polyline.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 // Implementation of Cyrus-Beck line clipping

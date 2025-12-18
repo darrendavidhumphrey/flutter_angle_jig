@@ -1,4 +1,4 @@
-import 'package:flutter_angle_jig/fsg.dart';
+import 'package:fsg/fsg.dart';
 import 'package:flutter/material.dart';
 import 'simple_example_canvas.dart';
 
