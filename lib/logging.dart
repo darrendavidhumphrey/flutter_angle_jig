@@ -108,8 +108,8 @@ class Logging {
   /// The current logger brevity setting
   static Brevity brevity = Brevity.normal;
 
-  // Whether or not to show log that haven't specified their filter level
-  static bool displayUnfilteredLogs = true;
+  // Log level for sources that haven't specified their filter level
+  static LogLevel defaultLogLevel = LogLevel.pedantic;
 
   /// Install a console logging function, e.g.  use to the 'print' function
   /// Pass in a void function [func] that accepts a string like so:
@@ -210,7 +210,7 @@ class Logging {
     if (configuredLevel != null) {
       return (configuredLevel.index >= level.index);
     } else {
-      return displayUnfilteredLogs;
+      return (defaultLogLevel.index >= level.index);
     }
   }
 

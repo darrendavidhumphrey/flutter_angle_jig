@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
 import 'package:fsg/fsg.dart';
+import 'package:vector_math/vector_math_64.dart' hide Colors;
 
-class Example1Scene extends Scene {
-  Example1Scene() :
+class CheckerBoardScene extends Scene {
+  CheckerBoardScene() :
         exampleVbo = VertexBuffer.v3t2();
 
   final VertexBuffer exampleVbo;
@@ -41,6 +42,31 @@ class Example1Scene extends Scene {
     exampleVbo.drawTeardown();
   }
 
+  void createViewMatrix() {
+    Vector3 up = Vector3(0, 1, 0);
+    Vector3 orbitCenter = Vector3(0,0,0);
+    Vector3 eyeLocation = Vector3(0,0,-500);
+
+    mvMatrix = createLookAtMatrix(eyeLocation, orbitCenter, up);
+    mvMatrix.translateByVector3(orbitCenter);
+    mvMatrix.rotateZ(radians(180));
+    mvMatrix.rotateY(radians(0));
+    mvMatrix.rotateX(radians(45));
+    mvMatrix.translateByVector3(-orbitCenter);
+  }
+
+  void createProjectionMatrix() {
+    final double aspectRatio = viewportSize.width / viewportSize.height;
+
+    setPerspectiveMatrix(
+      pMatrix,
+      radians(60),
+      aspectRatio,
+      0.1,
+      5000000,
+    );
+  }
+
   @override
   void drawScene() {
     gl.clearColor(1.0, 1.0, 1.0, 1.0);
@@ -51,8 +77,10 @@ class Example1Scene extends Scene {
     gl.disable(WebGL.CULL_FACE);
     gl.depthFunc(WebGL.LESS);
 
+    createProjectionMatrix();
+    createViewMatrix();
+
     mvPushMatrix();
-    // Matrices are set from orbit view
     drawVBO(pMatrix, mvMatrix);
 
     mvPopMatrix();

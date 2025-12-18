@@ -7,10 +7,10 @@ import 'scene_layer.dart';
 abstract class Scene with LoggableClass {
   late RenderingContext gl;
   /// Perspective matrix
-  late Matrix4 pMatrix;
+  Matrix4 pMatrix = Matrix4.identity();
 
   /// Model-View matrix.
-  late Matrix4 mvMatrix;
+  Matrix4 mvMatrix = Matrix4.identity();
 
   final List<SceneLayer> layers =[];
   List<Matrix4> mvStack = <Matrix4>[];

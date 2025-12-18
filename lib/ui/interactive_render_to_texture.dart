@@ -7,13 +7,13 @@ import 'package:visibility_detector/visibility_detector.dart';
 
 class InteractiveRenderToTexture extends StatefulWidget {
   final Scene scene;
-  final SceneNavigationDelegate navigationDelegate;
+  final SceneNavigationDelegate? navigationDelegate;
   final bool automaticallyPause;
   const InteractiveRenderToTexture({
     super.key,
     this.automaticallyPause = true,
     required this.scene,
-    required this.navigationDelegate,
+    this.navigationDelegate,
   });
 
   @override
@@ -35,8 +35,10 @@ class OrbitViewState extends State<InteractiveRenderToTexture> {
 
   @override
   Widget build(BuildContext context) {
-    widget.navigationDelegate.setScene(widget.scene);
 
+    if (widget.navigationDelegate != null) {
+      widget.navigationDelegate!.setScene(widget.scene);
+    }
     // TODO: Force the initial update
     // TODO: Handle all other events
 
@@ -50,7 +52,9 @@ class OrbitViewState extends State<InteractiveRenderToTexture> {
       },
       child: GestureDetector(
         onTapDown: (TapDownDetails event) {
-          widget.navigationDelegate.onTapDown(event);
+          if (widget.navigationDelegate != null) {
+            widget.navigationDelegate!.onTapDown(event);
+          }
         },
         child: Focus(
           autofocus: true,
@@ -65,7 +69,9 @@ class OrbitViewState extends State<InteractiveRenderToTexture> {
                 _focusNode.requestFocus();
               }
               if (event is PointerScrollEvent) {
-                widget.navigationDelegate.onPointerScroll(event);
+                if (widget.navigationDelegate != null) {
+                  widget.navigationDelegate!.onPointerScroll(event);
+                }
               }
             },
 
@@ -73,7 +79,9 @@ class OrbitViewState extends State<InteractiveRenderToTexture> {
               if (!_focusNode.hasFocus) {
                 _focusNode.requestFocus();
               }
-              widget.navigationDelegate.onPointerMove(event);
+              if (widget.navigationDelegate != null) {
+                widget.navigationDelegate!.onPointerMove(event);
+              }
             },
 
             child: RenderToTexture(scene: widget.scene),
