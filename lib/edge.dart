@@ -1,24 +1,52 @@
+import 'package:flutter/foundation.dart';
 import 'package:vector_math/vector_math_64.dart';
 
+/// Represents a 3D edge with a starting point and an ending point.
+@immutable
 class Edge {
-  final Vector3 p1;
-  final Vector3 p2;
-  Edge(this.p1, this.p2);
+  /// The starting point of the edge.
+  final Vector3 start;
 
-  Edge.zero() : p1 = Vector3.zero(), p2 = Vector3.zero();
+  /// The ending point of the edge.
+  final Vector3 end;
 
+  /// Creates an edge with the given starting and ending points.
+  Edge(this.start, this.end);
+
+  /// Creates an edge with both points at the origin.
+  Edge.zero() : start = Vector3.zero(), end = Vector3.zero();
+
+  /// Transforms the edge by a given origin and X and Y axes.
   Edge transform(Vector3 origin3D, Vector3 xAxis, Vector3 yAxis) {
-    Vector3 p1Transformed = origin3D + (xAxis * p1.x) + (yAxis * p1.y);
-    Vector3 p2Transformed = origin3D + (xAxis * p2.x) + (yAxis * p2.y);
+    Vector3 p1Transformed = origin3D + (xAxis * start.x) + (yAxis * start.y);
+    Vector3 p2Transformed = origin3D + (xAxis * end.x) + (yAxis * end.y);
 
-    return Edge(p1Transformed,p2Transformed);
+    return Edge(p1Transformed, p2Transformed);
   }
 
-  static List<Edge> transformEdges(List<Edge> edges,Vector3 origin3D, Vector3 xAxis, Vector3 yAxis) {
-    List<Edge> transformed = [];
-    for (var e in edges) {
-      transformed.add(e.transform(origin3D, xAxis, yAxis));
-    }
-    return transformed;
+  /// Transforms a list of edges by a given origin and X and Y axes.
+  static List<Edge> transformEdges(
+      List<Edge> edges, Vector3 origin3D, Vector3 xAxis, Vector3 yAxis) {
+    return edges
+        .map((e) => e.transform(origin3D, xAxis, yAxis))
+        .toList(growable: false);
   }
+
+  Edge copyWith({Vector3? start, Vector3? end}) {
+    return Edge(
+      start ?? this.start,
+      end ?? this.end,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Edge &&
+          runtimeType == other.runtimeType &&
+          start == other.start &&
+          end == other.end;
+
+  @override
+  int get hashCode => start.hashCode ^ end.hashCode;
 }

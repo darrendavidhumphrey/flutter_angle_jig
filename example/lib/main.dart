@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:fsg_examples/animated_checkerboard_scene.dart';
 import 'checkerboard_scene.dart';
 import 'checkerboard_uniforms_scene.dart';
+import 'orbitview_scene.dart';
 
 void main() async {
   Logging.brevity = Brevity.detailed;
@@ -55,6 +56,7 @@ class TestAppState extends State<TestApp> {
                       RenderToTexture(scene: checkerBoardScene),
                       CheckerBoardUniformsExample(),
                       AnimatedCheckerBoardExample(),
+                      OrbitViewExample(),
                     ],
                   ),
                   LayoutBuilder(
@@ -82,6 +84,7 @@ class TestAppState extends State<TestApp> {
                               label: 'Example 2: Driving Shader Uniforms',
                             ),
                             DropdownMenuEntry(value: 2, label: 'Example 3: Animated Shader Uniforms'),
+                            DropdownMenuEntry(value: 3, label: 'Example 4: Navigation Delegate (Orbit View)'),
                           ],
                         ),
                       );
