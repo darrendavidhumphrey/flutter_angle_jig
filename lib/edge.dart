@@ -32,6 +32,23 @@ class Edge {
         .toList(growable: false);
   }
 
+  // Determine if two edge lists are STRICTLY equal, meaning
+  // that they contain the same set of edges, in the same order,
+  // and the points in each edge are in the same order and each point
+  // is exactly equal
+  static bool edgeListsAreStrictlyEqual(List<Edge> set1, List<Edge> set2) {
+    if (set1.length != set2.length) {
+      return false;
+    }
+
+    for (int i = 0; i < set1.length; i++) {
+      if ((set1[i].start != set2[i].start) || (set1[i].end != set2[i].end)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   Edge copyWith({Vector3? start, Vector3? end}) {
     return Edge(
       start ?? this.start,
@@ -48,5 +65,5 @@ class Edge {
           end == other.end;
 
   @override
-  int get hashCode => start.hashCode ^ end.hashCode;
+  int get hashCode => Object.hash(start, end);
 }
