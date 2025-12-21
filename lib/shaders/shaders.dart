@@ -157,11 +157,10 @@ class ShaderList {
     gl.useProgram(grid.program);
     _shaders["grid"] = grid;
 
-    print("BEFORE INITIALIZING ONE LIGHT!");
     oneLight = OneLightShader(gl);
     gl.useProgram(oneLight.program);
     _shaders["oneLight"] = oneLight;
-    print("AFTER INITIALIZING ONE LIGHT! Type is ${oneLight.runtimeType}");
+
     checkerBoard = CheckerBoardShader(gl);
     gl.useProgram(checkerBoard.program);
     _shaders["checkerBoard"] = checkerBoard;
