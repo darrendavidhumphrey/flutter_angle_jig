@@ -8,7 +8,7 @@ import 'orbitview_scene.dart';
 
 void main() async {
   Logging.brevity = Brevity.detailed;
-  Logging.defaultLogLevel = LogLevel.verbose;
+  Logging.defaultLogLevel = LogLevel.pedantic;
   Logging.setConsoleLogFunction((String message) {
     print(message);
   });

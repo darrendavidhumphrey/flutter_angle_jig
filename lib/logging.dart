@@ -1,242 +1,232 @@
-// This logging framework handles logging with different severity levels
-// and tracks the source of each log message from the class that emitted the
-// log message.
-// The frame also allow for dynamic runtime filtering of log events by level
-// and by source.
-// Additionally it supports redirecting the log messages to other sources besides
-// the console, e.g. using the XTerm widget
+/// This logging framework handles logging with different severity levels
+/// and tracks the source of each log message from the class that emitted the
+/// log message. The frame also allows for dynamic runtime filtering of log
+/// events by level and by source. Additionally, it supports redirecting the
+/// log messages to other sources besides the console.
 
-/// The log levels, in priority order
-/// e.g. if logLevel is set to "warning",  only error and warnings will be shown
+/// Defines the severity levels for log messages, in priority order.
+///
+/// When a log level is set for a source, only messages with that level or a
+/// higher priority (a lower index) will be shown.
+/// e.g. if the level is set to `warning`, only `error` and `warning` messages
+/// will be logged.
 enum LogLevel {
-  /// Don't log any errors
+  /// No log messages will be shown.
   none,
 
-  /// Only log errors
+  /// For critical errors that might prevent the application from running correctly.
   error,
 
-  /// Log warnings and other levels above this level
+  /// For potential issues or non-critical errors.
   warning,
 
-  /// Log info and other levels above this level
+  /// For general informational messages about application state.
   info,
 
-  /// Log verbose and other levels above this level
+  /// For detailed messages that are useful for debugging.
   verbose,
 
-  /// Log trace and other levels above this level
+  /// For fine-grained messages, often used for tracing execution flow.
   trace,
 
-  /// Log pedantic and other levels above this level
+  /// For extremely detailed or frequent messages, typically only used for deep
+  /// debugging of specific components.
   pedantic,
 }
 
-/// How detailed to make log messages
+/// Defines how detailed log messages should be when formatted.
 enum Brevity {
-  /// Displays just the message
+  /// Displays only the log message itself.
   terse,
 
-  /// Displays the message and the severity
+  /// Displays the severity level along with the message.
   normal,
 
-  /// Displays the message, the severity and the source
+  /// Displays the source, severity level, and the message.
   detailed,
 }
 
-/// Add this mixin to any classes that you want to output log messages from
+/// A mixin that provides logging capabilities to any class.
+///
+/// By using this mixin on a class, you can call logging methods like `logError`,
+/// `logWarning`, etc., and the source of the message will be automatically
+/// set to the class's runtime type.
 mixin class LoggableClass {
-  /// Log an message with severity level Error
-  void logError(String message) {
-    Logging.logError(message, source: runtimeType.toString());
+  String? _cachedRuntimeType;
+
+  /// Log a message with the specified severity level.
+  void log(LogLevel level, String message) {
+    _cachedRuntimeType ??= runtimeType.toString();
+    Logging._logMessage(level, _cachedRuntimeType!, message);
   }
 
-  /// Log an message with severity level Warning
-  void logWarning(String message) {
-    Logging.logWarning(message, source: runtimeType.toString());
-  }
+  /// Logs a message with severity level [LogLevel.error].
+  void logError(String message) => log(LogLevel.error, message);
 
-  /// Log an message with severity level Info
-  void logInfo(String message) {
-    Logging.logInfo(message, source: runtimeType.toString());
-  }
+  /// Logs a message with severity level [LogLevel.warning].
+  void logWarning(String message) => log(LogLevel.warning, message);
 
-  /// Log an message with severity level Verbose
-  void logVerbose(String message) {
-    Logging.logVerbose(message, source: runtimeType.toString());
-  }
+  /// Logs a message with severity level [LogLevel.info].
+  void logInfo(String message) => log(LogLevel.info, message);
 
-  /// Log an message with severity level Trace
-  void logTrace(String message) {
-    Logging.logTrace(message, source: runtimeType.toString());
-  }
+  /// Logs a message with severity level [LogLevel.verbose].
+  void logVerbose(String message) => log(LogLevel.verbose, message);
 
-  /// Log an message with severity level Pedantic
-  void logPedantic(String message) {
-    Logging.logPedantic(message, source: runtimeType.toString());
-  }
+  /// Logs a message with severity level [LogLevel.trace].
+  void logTrace(String message) => log(LogLevel.trace, message);
+
+  /// Logs a message with severity level [LogLevel.pedantic].
+  void logPedantic(String message) => log(LogLevel.pedantic, message);
 }
 
-/// Use this class to configure logging.
-/// There's no need to instantiate it, as it's not a singleton and it
-/// only contains static fields and methods
+/// A static utility class for configuring and creating log messages.
 ///
-/// It also possible to directly call the logging methods on this class
-/// when emitting log messages that are not part of a class, e.g.:
-///
-/// Logging.logInfo("Some important message",source:"mainLoop");
-///
-/// but for logging from classes it is preferred to use the LoggableClass mixin,
-/// which provides a less verbose way of creating log statements
-///
-/// class MyClass with LoggableClass {
-///    void onSomethingBad() {
-///       // Preferred way to log:
-///       logError("Oh Noes! Something Bad Happened!");
-///
-///       // Works, but requires a lot more typing
-///       Logging.logError("Oh Noes! Something Bad Happened!",source:"MyClass");
-///    }
-/// }
-///
-///
+/// This class contains only static fields and methods and is not meant to be
+/// instantiated.
 class Logging {
+  // Private constructor to prevent instantiation.
+  Logging._();
 
-  // If the map contains an entry for a source, then the stored LogLevel is
-  // used as a filter
-  static Map<String,LogLevel> logLevelMap={};
+  /// A map that stores the specific [LogLevel] for different sources (class names).
+  /// If a source is not in this map, the [defaultLogLevel] is used.
+  static Map<String, LogLevel> logLevelMap = {};
 
-  /// The current logger brevity setting
+  /// The global brevity setting that controls the detail level of all log messages.
   static Brevity brevity = Brevity.normal;
 
-  // Log level for sources that haven't specified their filter level
+  /// If true, console output will be color-coded based on log level.
+  /// This uses ANSI escape codes and works in most modern terminals.
+  static bool colorizeOutput = true;
+
+  /// The log level for sources that have not specified their own filter level
+  /// in the [logLevelMap].
   static LogLevel defaultLogLevel = LogLevel.pedantic;
 
-  /// Install a console logging function, e.g.  use to the 'print' function
-  /// Pass in a void function [func] that accepts a string like so:
-  ///   Logging.setConsoleLogFunction((String message) {
-  ///     print(message);
-  ///   });
+  /// Installs a function that will receive all formatted log messages.
+  /// Typically, you would pass the `print` function here.
   static void setConsoleLogFunction(void Function(String arg) func) {
     _consoleLogFunction = func;
   }
 
-  /// Install a custom logging function, e.g. for redirecting the log to
-  /// a widget. Pass in a void function [func] that accepts a string
+  /// Installs an optional second function to receive log messages.
+  /// This is useful for redirecting logs to a UI widget, a file, or a network service.
   static void setCustomLogFunction(void Function(String arg) func) {
     _customLogFunction = func;
   }
 
-  /// Set the log level for a source from a string. Useful when the log level
-  /// for an application is stored in a configuration file.
-  /// Takes a string parameter [level] to set the level
-  /// A level of null is interpreted as verbose
-  static void setLogLevelFromString(String? level,String source) {
+  /// Sets the log level for a specific [source] using a string representation
+  /// of a [LogLevel] (e.g., "warning").
+  ///
+  /// If the [level] string is invalid, a warning is logged and the default
+  /// log level is used for that source.
+  static void setLogLevelFromString(String? level, String source) {
     if (level == null) {
       logLevelMap[source] = LogLevel.verbose;
     } else {
       logLevelMap[source] = LogLevel.values.firstWhere(
-            (e) => e.toString() == 'LogLevel.$level',
+        (e) => e.name == level.toLowerCase(),
+        orElse: () {
+          logWarning(
+            '"$level" is not a valid LogLevel. Using default for source "$source".',
+            source: "Logging",
+          );
+          return defaultLogLevel;
+        },
       );
     }
   }
 
-  // Set the log level for a source
-  static void setLogLevel(LogLevel level,String source) {
-      logLevelMap[source] = level;
+  /// Sets the log level for a specific [source].
+  static void setLogLevel(LogLevel level, String source) {
+    logLevelMap[source] = level;
   }
 
-  /// Log a message with severity level of Error
-  /// For logging messages from classes, it's preferred for to invoke this via
-  /// the Loggable mixin which automatically sets the source
-  ///
-  /// This interface is primarily for invoking logs from static methods and
-  /// from outside of classes
-  ///
-  /// Takes two parameters, the [message] and the [source]
-  static void logError(String message, {required String source}) {
-    _logMessage(LogLevel.error, source, message);
+  /// Logs a message with a specific severity level from a static context.
+  static void log(LogLevel level, String message, {required String source}) {
+    _logMessage(level, source, message);
   }
 
-  /// Log a message with severity level of Warning
-  /// See LogError for preferred usage pattern
-  /// Takes two parameters, the [message] and the [source]
-  static void logWarning(String message, {required String source}) {
-    _logMessage(LogLevel.warning, source, message);
-  }
+  /// Logs an error message from a static context.
+  static void logError(String message, {required String source}) =>
+      log(LogLevel.error, message, source: source);
 
-  /// Log a message with severity level of Info
-  /// See LogError for preferred usage pattern
-  /// Takes two parameters, the [message] and the [source]
-  static void logInfo(String message, {required String source}) {
-    _logMessage(LogLevel.info, source, message);
-  }
+  /// Logs a warning message from a static context.
+  static void logWarning(String message, {required String source}) =>
+      log(LogLevel.warning, message, source: source);
 
-  /// Log a message with severity level of Verbose
-  /// See LogError for preferred usage pattern
-  /// Takes two parameters, the [message] and the [source]
-  static void logVerbose(String message, {required String source}) {
-    _logMessage(LogLevel.verbose, source, message);
-  }
+  /// Logs an info message from a static context.
+  static void logInfo(String message, {required String source}) =>
+      log(LogLevel.info, message, source: source);
 
-  /// Log a message with severity level of Trace
-  /// See LogError for preferred usage pattern
-  /// Takes two parameters, the [message] and the [source]
-  static void logTrace(String message, {required String source}) {
-    _logMessage(LogLevel.trace, source, message);
-  }
+  /// Logs a verbose message from a static context.
+  static void logVerbose(String message, {required String source}) =>
+      log(LogLevel.verbose, message, source: source);
 
-  /// Log a message with severity level of Pedantic
-  /// See LogError for preferred usage pattern
-  /// Takes two parameters, the [message] and the [source]
-  static void logPedantic(String message, {required String source}) {
-    _logMessage(LogLevel.pedantic, source, message);
-  }
+  /// Logs a trace message from a static context.
+  static void logTrace(String message, {required String source}) =>
+      log(LogLevel.trace, message, source: source);
+
+  /// Logs a pedantic message from a static context.
+  static void logPedantic(String message, {required String source}) =>
+      log(LogLevel.pedantic, message, source: source);
 
   ////////////////////////////////////////////////////////////////////////////
   //
   // Internal implementation
   //
   ////////////////////////////////////////////////////////////////////////////
-  /// Console logging function installed by user code
+
+  /// The console logging function installed by user code.
   static void Function(String)? _consoleLogFunction;
 
-  /// Optional custom log function installed by user code
+  /// The optional custom log function installed by user code.
   static void Function(String)? _customLogFunction;
 
-  /// Helper function to determine if a log message should be emitted
-  static bool _shouldLogMessage(String source, LogLevel level) {
-    LogLevel? configuredLevel = logLevelMap[source];
+  /// ANSI escape codes for colorizing log output.
+  static const _ansiColorMap = {
+    LogLevel.error: '\x1B[31m', // Red
+    LogLevel.warning: '\x1B[33m', // Yellow
+    LogLevel.info: '\x1B[32m', // Green
+    LogLevel.verbose: '\x1B[36m', // Cyan
+    LogLevel.trace: '\x1B[94m', // Bright Blue
+    LogLevel.pedantic: '\x1B[95m', // Bright Magenta
+  };
+  static const _ansiReset = '\x1B[0m';
 
-    if (configuredLevel != null) {
-      return (configuredLevel.index >= level.index);
-    } else {
-      return (defaultLogLevel.index >= level.index);
-    }
+  /// Determines if a message with a given [level] and [source] should be logged.
+  static bool _shouldLogMessage(String source, LogLevel level) {
+    final LogLevel effectiveLevel = logLevelMap[source] ?? defaultLogLevel;
+    return level.index <= effectiveLevel.index && level != LogLevel.none;
   }
 
+  /// Formats the log message according to the current [brevity] setting.
   static String _formatMessage(LogLevel level, String source, String message) {
+    String formatted;
     switch (brevity) {
       case Brevity.terse:
-        return message;
+        formatted = message;
+        break;
       case Brevity.normal:
-        return "[${level.name}]: $message";
+        formatted = "[${level.name}]: $message";
+        break;
       case Brevity.detailed:
-        return "$source::[${level.name}] $message";
+        formatted = "$source::[${level.name}] $message";
+        break;
     }
+
+    if (colorizeOutput && _ansiColorMap.containsKey(level)) {
+      return '${_ansiColorMap[level]}$formatted$_ansiReset';
+    }
+    return formatted;
   }
 
-  /// Emit a formatted log message, if it passes the filter test
+  /// The core logging function that filters, formats, and outputs the message.
   static void _logMessage(LogLevel level, String source, String message) {
     if (_shouldLogMessage(source, level)) {
       String output = _formatMessage(level, source, message);
 
-      if (_customLogFunction != null) {
-        _customLogFunction!(output);
-      }
-
-      if (_consoleLogFunction != null) {
-        _consoleLogFunction!(output);
-      }
+      _customLogFunction?.call(output);
+      _consoleLogFunction?.call(output);
     }
   }
 }

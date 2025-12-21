@@ -33,9 +33,9 @@ class OrbitViewScene extends Scene {
     gl.enable(WebGL.DEPTH_TEST);
 
 
-    exampleVbo.drawSetup();
+    exampleVbo.bind();
     exampleVbo.drawTriangles();
-    exampleVbo.drawTeardown();
+    exampleVbo.unbind();
   }
 
   @override

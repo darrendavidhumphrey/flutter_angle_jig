@@ -2,14 +2,27 @@ import 'dart:typed_data';
 
 import 'package:flutter_angle/flutter_angle.dart';
 
+/// Manages a WebGL Element Array Buffer, also known as an Index Buffer Object (IBO).
+///
+/// This class handles the creation, allocation, data transfer, and disposal of a
+/// buffer used for indexed drawing with `gl.drawElements`.
 class IndexBuffer {
+  /// The underlying rendering context.
   final RenderingContext _gl;
+
+  /// The WebGL identifier for the buffer object.
   final Buffer _iboId;
 
+  /// The number of indices that are currently active and will be used for drawing.
   int _activeIndexCount = 0;
+
+  /// The total number of indices that the buffer can currently hold.
   int _capacity = 0;
+
+  /// The number of active indices for drawing.
   int get indexCount => _activeIndexCount;
 
+  /// The client-side array that holds the index data before it's sent to the GPU.
   Int16Array? _indexData;
 
   /// Creates an index buffer for the given rendering context.
@@ -45,7 +58,7 @@ class IndexBuffer {
     return _indexData;
   }
 
-  /// Disposes of all WebGL resources and buffers held by this object.
+  /// Disposes of all WebGL resources and the client-side buffer held by this object.
   void dispose() {
     _gl.deleteBuffer(_iboId);
     _indexData?.dispose();
@@ -57,18 +70,34 @@ class IndexBuffer {
   void setActiveIndexCount(int count) {
     assert(count <= _capacity);
     _activeIndexCount = count;
-    _gl.bindBuffer(WebGL.ELEMENT_ARRAY_BUFFER, _iboId);
-    _gl.bufferData(WebGL.ELEMENT_ARRAY_BUFFER, _indexData, WebGL.STATIC_DRAW);
-    _gl.bindBuffer(WebGL.ELEMENT_ARRAY_BUFFER, null);
+
+    if (count > 0 && _indexData != null) {
+      _gl.bindBuffer(WebGL.ELEMENT_ARRAY_BUFFER, _iboId);
+      _gl.bufferData(WebGL.ELEMENT_ARRAY_BUFFER, _indexData, WebGL.STATIC_DRAW);
+      _gl.bindBuffer(WebGL.ELEMENT_ARRAY_BUFFER, null);
+    }
   }
 
   /// Binds the index buffer to make it the active ELEMENT_ARRAY_BUFFER.
-  void drawSetup() {
+  void bind() {
     _gl.bindBuffer(WebGL.ELEMENT_ARRAY_BUFFER, _iboId);
   }
 
-  /// Unbinds the index buffer.
-  void drawTeardown() {
+  /// Unbinds the index buffer by binding `null`.
+  void unbind() {
     _gl.bindBuffer(WebGL.ELEMENT_ARRAY_BUFFER, null);
   }
+
+  /// Checks for value equality. Two [IndexBuffer] instances are considered equal
+  /// if they manage the same underlying WebGL buffer object.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is IndexBuffer &&
+          runtimeType == other.runtimeType &&
+          _iboId == other._iboId;
+
+  /// Provides a hash code consistent with value equality.
+  @override
+  int get hashCode => _iboId.hashCode;
 }

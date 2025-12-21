@@ -104,8 +104,8 @@ class MeshFileRenderer {
       gl.enable(WebGL.DEPTH_TEST);
       gl.enable(WebGL.CULL_FACE);
       gl.cullFace(WebGL.BACK);
-      vbo!.drawSetup();
-      ibo!.drawSetup();
+      vbo!.bind();
+      ibo!.bind();
 
       enableLightingShader(pMatrix, mvMatrix);
       for (var mesh in model!.meshes) {
@@ -119,9 +119,9 @@ class MeshFileRenderer {
             WebGL.TRIANGLES, mesh.triangleIndices.length, WebGL.UNSIGNED_SHORT,
             mesh.bufferOffset * indexSize);
       }
-      ibo!.drawTeardown();
+      ibo!.unbind();
 
-      vbo!.drawTeardown();
+      vbo!.unbind();
       gl.disable(WebGL.DEPTH_TEST);
       gl.disable(WebGL.CULL_FACE);
     }
