@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter_angle/flutter_angle.dart';
+import 'package:fsg/gl_context_manager.dart';
 import 'package:vector_math/vector_math_64.dart';
 import 'scene.dart';
 
@@ -7,14 +8,10 @@ import 'scene.dart';
 ///
 /// A layer is a distinct component of a scene that can be rebuilt and drawn
 /// independently. It has its own lifecycle methods and manages its own WebGL
-/// resources. This class must be initialized with a rendering context via [init]
-/// before it can be used.
-abstract class SceneLayer {
+/// resources.
+abstract class SceneLayer with GlContextManager {
   /// A reference to the parent [Scene] that owns this layer.
-  late Scene parent;
-
-  /// The WebGL rendering context.
-  late RenderingContext gl;
+  late final Scene parent;
 
   bool _needsRebuild = true;
 
@@ -22,17 +19,12 @@ abstract class SceneLayer {
   /// rebuilt on the next frame.
   bool get needsRebuild => _needsRebuild;
 
-  bool _isInitialized = false;
-
-  /// A flag indicating whether the layer has been initialized with a rendering context.
-  bool get isInitialized => _isInitialized;
-
-  /// Creates a new SceneLayer.
-  SceneLayer();
-
   /// The current size of the viewport, passed down from the parent scene.
   Size _viewportSize = Size.zero;
   Size get viewportSize => _viewportSize;
+
+  /// Creates a new SceneLayer.
+  SceneLayer();
 
   /// Sets the viewport size for this layer.
   void setViewportSize(Size size) {
@@ -44,11 +36,11 @@ abstract class SceneLayer {
     _needsRebuild = value;
   }
 
-  /// Initializes the layer with the WebGL [RenderingContext].
+  /// Initializes the layer and its GL context.
   /// This must be called before any drawing or building operations can occur.
   void init(Scene parent) {
     this.parent = parent;
-    gl = parent.gl;
+    initializeGl(parent.gl);
   }
 
   /// Rebuilds the layer's internal state and WebGL resources.
@@ -57,11 +49,6 @@ abstract class SceneLayer {
   /// uploading data, or performing calculations that only need to happen when
   /// state changes.
   void rebuild(DateTime now);
-
-  /// Sets the initialization status of the layer.
-  void setInitialized(bool value) {
-    _isInitialized = value;
-  }
 
   /// Draws the layer.
   ///

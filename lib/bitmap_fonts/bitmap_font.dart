@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
 import 'package:xml/xml.dart';
+import '../fsg_singleton.dart';
 import '../texture_manager.dart';
 
 class KerningInfo {
@@ -67,7 +68,7 @@ class BitmapFont {
       this.kerningPairs,
       );
   void loadTexture(String textureName) async {
-    fontTexture = await TextureManager().loadAndBindTextureFromAssets(
+    fontTexture = await FSG().textureManager.createTextureFromAsset(
       textureName,
     );
 

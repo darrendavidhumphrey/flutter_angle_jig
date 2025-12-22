@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
+import 'package:fsg/gl_context_manager.dart';
 import 'package:fsg/matrix_stack.dart';
 import 'package:fsg/performance_monitor.dart';
 import 'logging.dart';
@@ -14,24 +15,7 @@ import 'scene_layer.dart';
 ///
 /// A [Scene] must be initialized with a [RenderingContext] via the [init] method
 /// before it can be used for drawing.
-abstract class Scene with LoggableClass {
-  bool _isInitialized = false;
-
-  /// A flag indicating whether the scene has been initialized with a rendering context.
-  bool get isInitialized => _isInitialized;
-
-  late RenderingContext _gl;
-
-  /// The WebGL rendering context.
-  ///
-  /// Throws a [StateError] if accessed before the scene has been initialized via [init].
-  RenderingContext get gl {
-    if (!_isInitialized) {
-      throw StateError('Scene GL context accessed before it was initialized.');
-    }
-    return _gl;
-  }
-
+abstract class Scene with LoggableClass, GlContextManager {
   /// The perspective projection matrix.
   Matrix4 pMatrix = Matrix4.identity();
 
@@ -82,11 +66,10 @@ abstract class Scene with LoggableClass {
   /// Initializes the scene with the WebGL [RenderingContext].
   /// This must be called before any drawing operations can occur.
   void init(RenderingContext gl) {
-    _gl = gl;
-    FSG().initContext(_gl);
+    initializeGl(gl); // Initialize the GlContextManager mixin
+    FSG().initContext(gl);
     mvMatrixStack.current = Matrix4.identity();
-    _gl.clearColor(0, 1, 0, 1);
-    _isInitialized = true;
+    gl.clearColor(0, 1, 0, 1);
   }
 
   /// Signals that the scene needs to be redrawn on the next frame.
@@ -109,6 +92,14 @@ abstract class Scene with LoggableClass {
   /// The core drawing logic to be implemented by subclasses.
   /// This method is called within the rendering loop when a repaint is needed.
   void drawScene();
+
+  /// Releases resources held by the scene and its layers.
+  void dispose() {
+    for (var layer in layers) {
+      layer.dispose();
+    }
+    layers.clear();
+  }
 
   /// Adds a [SceneLayer] to this scene.
   void addLayer(SceneLayer layer) {
@@ -144,7 +135,7 @@ abstract class Scene with LoggableClass {
   /// Renders the scene to the configured texture if a repaint has been requested
   /// or if any layer needs to be rebuilt.
   Future<void> renderSceneToTexture(_) async {
-    if (renderToTextureId == null) {
+    if (renderToTextureId == null || !isInitialized) {
       return;
     }
 

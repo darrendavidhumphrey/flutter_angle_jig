@@ -17,9 +17,10 @@ class FSG with LoggableClass {
   static double renderToTextureSize = 4096;
   final Map<Scene, FlutterAngleTexture> scenes = {};
   final shaders = ShaderList();
-  final textures = <FlutterAngleTexture>[];
+  final renderToTextureList = <FlutterAngleTexture>[];
   final materials = MaterialList();
   final fonts = BitmapFontList();
+  final textureManager = TextureManager();
 
   static final FSG _singleton = FSG._internal();
 
@@ -45,7 +46,7 @@ class FSG with LoggableClass {
   Future<FlutterAngleTexture?> allocTexture(AngleOptions options,{double textureSize=4096}) async {
     if (glIsInitialized) {
       var newTexture = await angle.createTexture(options);
-      textures.add(newTexture);
+      renderToTextureList.add(newTexture);
       return newTexture;
     }
     return null;
@@ -73,7 +74,7 @@ class FSG with LoggableClass {
 
   void initContext(RenderingContext gl) {
     if (!contextInitialized) {
-      TextureManager().init(gl);
+      textureManager.initializeGl(gl);
       initDefaultMaterial();
 
       shaders.init(gl);
