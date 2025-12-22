@@ -1,12 +1,38 @@
+import 'dart:ui';
+import 'package:flutter_angle/flutter_angle.dart';
+import 'package:fsg/float32_array_filler.dart';
 import 'package:fsg/polyline.dart';
 import 'package:fsg/triangle_mesh.dart';
 import 'package:fsg/util.dart';
+import 'package:fsg/vertex_buffer.dart';
 import 'package:vector_math/vector_math_64.dart';
 
-/// A utility class with static methods to create complex [TriangleMesh] objects.
+/// A utility class with static methods to create complex [TriangleMesh] objects
+/// or populate [VertexBuffer] objects from geometry.
 class MeshFactory {
   // Private constructor to prevent instantiation of this utility class.
   MeshFactory._();
+
+  /// Fills a [vbo] with tessellated geometry from a list of [faces].
+  static void fromSolidFaces(VertexBuffer vbo, List<Polyline> faces) {
+    // Safely calculate the exact number of triangles needed.
+    int triangleCount = 0;
+    for (var face in faces) {
+      if (face.length > 2) {
+        triangleCount += face.length - 2;
+      }
+    }
+
+    int vertexCount = triangleCount * 3;
+    Float32Array? vertexTextureArray = vbo.requestBuffer(vertexCount);
+    if (vertexTextureArray != null) {
+      Float32ArrayFiller filler = Float32ArrayFiller(vertexTextureArray);
+      for (var face in faces) {
+        _addTexturedTriFan(filler, face, true);
+      }
+    }
+    vbo.setActiveVertexCount(vertexCount);
+  }
 
   /// Creates a [TriangleMesh] by tessellating a list of [faces].
   static TriangleMesh fromFaces(List<Polyline> faces) {
@@ -31,6 +57,95 @@ class MeshFactory {
     }
     mesh.recomputeBounds();
     return mesh;
+  }
+
+  /// Fills a [vbo] by tessellating a list of [outlines] with a solid [color].
+  static void tessellateColorOutlines(
+      VertexBuffer vbo, List<Polyline> outlines, Color color) {
+    _tessellate(vbo, outlines, (filler, outline) {
+      _addColorTriFan(filler, outline, color);
+    });
+  }
+
+  /// Fills a [vbo] by tessellating a list of [outlines] with texture coordinates.
+  static void tessellateOutlines(
+      VertexBuffer vbo, List<Polyline> outlines, bool generateNormals) {
+    _tessellate(vbo, outlines, (filler, outline) {
+      _addTexturedTriFan(filler, outline, generateNormals);
+    });
+  }
+
+  /// Generic helper to tessellate a list of outlines into a vertex buffer.
+  static void _tessellate(VertexBuffer vbo, List<Polyline> outlines,
+      Function(Float32ArrayFiller, Polyline) addFunction) {
+    int triangleCount = 0;
+    for (var outline in outlines) {
+      if (outline.length > 2) {
+        triangleCount += (outline.length - 2);
+      }
+    }
+
+    int newVertexCount = triangleCount * 3;
+    final buffer = vbo.requestBuffer(newVertexCount);
+
+    if (buffer != null) {
+      final filler = Float32ArrayFiller(buffer);
+      for (var outline in outlines) {
+        if (outline.length > 2) {
+          addFunction(filler, outline);
+        }
+      }
+    }
+    vbo.setActiveVertexCount(newVertexCount);
+  }
+
+  /// Private helper to add a colored tri-fan for a single outline.
+  static void _addColorTriFan(
+      Float32ArrayFiller filler, Polyline outline, Color color) {
+    int numTris = outline.length - 2;
+    Vector3 v0 = outline.getVector3(0);
+    for (int j = 0; j < numTris; j++) {
+      Vector3 v1 = outline.getVector3(j + 1);
+      Vector3 v2 = outline.getVector3(j + 2);
+      filler.addV3C4(v0, color);
+      filler.addV3C4(v1, color);
+      filler.addV3C4(v2, color);
+    }
+  }
+
+  /// Private helper to add a textured tri-fan for a single outline.
+  static void _addTexturedTriFan(
+      Float32ArrayFiller filler, Polyline outline, bool generateNormals) {
+    int numTris = outline.length - 2;
+    Vector3 v0 = outline.getVector3(0);
+    Vector3 normal = Vector3.zero();
+
+    if (outline.planeIsValid) {
+      normal = outline.normal!;
+    }
+
+    final bounds = outline.getBounds2D();
+    double w = bounds.max.x - bounds.min.x;
+    double h = bounds.max.y - bounds.min.y;
+    double x = bounds.min.x;
+    double y = bounds.min.y;
+
+    for (int j = 0; j < numTris; j++) {
+      Vector3 v1 = outline.getVector3(j + 1);
+      Vector3 v2 = outline.getVector3(j + 2);
+
+      List<Vector2> texCoord = computeTexCoords(v0, v1, v2, x, y, w, h);
+
+      if (generateNormals) {
+        filler.addV3T2N3(v0, texCoord[0], normal);
+        filler.addV3T2N3(v1, texCoord[1], normal);
+        filler.addV3T2N3(v2, texCoord[2], normal);
+      } else {
+        filler.addV3V2(v0, texCoord[0]);
+        filler.addV3V2(v1, texCoord[1]);
+        filler.addV3V2(v2, texCoord[2]);
+      }
+    }
   }
 
   /// Creates a new [TriangleMesh] by extruding a list of [outlines] by a [depth] vector.

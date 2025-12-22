@@ -13,10 +13,10 @@ class TriangleMesh {
   static const int componentCount = 8;
 
   // The offset in floats to the start of the texture coordinate data within a vertex.
-  static const int texCoordOffset = 3;
+  static const int texCoordOffset = 6;
 
   // The offset in floats to the start of the normal vector data within a vertex.
-  static const int normalOffset = 5;
+  static const int normalOffset = 3;
 
   final int triangleCount;
 
@@ -137,11 +137,11 @@ class TriangleMesh {
     vertexData[meshIndex++] = pos.x;
     vertexData[meshIndex++] = pos.y;
     vertexData[meshIndex++] = pos.z;
-    vertexData[meshIndex++] = tex.x;
-    vertexData[meshIndex++] = tex.y;
     vertexData[meshIndex++] = normal.x;
     vertexData[meshIndex++] = normal.y;
     vertexData[meshIndex++] = normal.z;
+    vertexData[meshIndex++] = tex.x;
+    vertexData[meshIndex++] = tex.y;
   }
 
   /// A low-level method to add a single triangle to the mesh data.

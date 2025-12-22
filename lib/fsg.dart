@@ -19,7 +19,6 @@ export 'scene_layer.dart';
 export 'texture_manager.dart';
 export 'util.dart';
 export 'vertex_buffer.dart';
-export 'vertex_buffer_util.dart';
 
 export 'ui/render_to_texture.dart';
 export 'ui/interactive_render_to_texture.dart';

@@ -2,82 +2,79 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:vector_math/vector_math_64.dart';
 
+/// Utility extensions for 3D vector operations.
 extension Dist2D on Vector3 {
+  /// Calculates the shortest distance from this point to a 3D line segment [a]-[b].
   double distanceToLineSegment3D(Vector3 a, Vector3 b) {
-    // Vector representing the line segment
     Vector3 segmentVector = b - a;
-
-    // Vector from the segment's start point to the given point
     Vector3 pointToSegmentStart = this - a;
 
-    // Calculate the projection of 'pointToSegmentStart' onto 'segmentVector'
-    // using the dot product to determine 't'
-    // t is the parameter along the line: 0 <= t <= 1 means the closest point is on the segment
+    // Project this point onto the line defined by the segment.
+    // t is the normalized position of the closest point on the infinite line.
     double t = pointToSegmentStart.dot(segmentVector) / segmentVector.length2;
 
-    // Clamp 't' to be within the segment's bounds (0 to 1)
+    // If t is between 0 and 1, the closest point is on the segment.
+    // Otherwise, the closest point is one of the endpoints.
     t = t.clamp(0.0, 1.0);
 
-    // Calculate the closest point on the line segment
     Vector3 closestPointOnSegment = a + segmentVector * t;
 
-    // Return the distance between the given point and the closest point on the segment
     return distanceTo(closestPointOnSegment);
   }
 }
 
+/// Utility extension for [Quad] objects.
 extension QuadNormal on Quad {
+  /// Computes the normalized surface normal of the quad.
   Vector3 getSurfaceNormal() {
     Vector3 normal = (point1 - point0).cross(point2 - point0);
     normal.normalize();
-
     return normal;
   }
 }
 
+/// Utility extension for human-readable [Vector3] formatting.
 extension VectorToString on Vector3 {
   String niceString() {
     return "(x: ${x.toStringAsFixed(2)} y: ${y.toStringAsFixed(2)} z: ${z.toStringAsFixed(2)})";
   }
 }
 
+/// Utility extension for human-readable [Quad] formatting.
 extension QuadToString on Quad {
   String niceString() {
     String pointsStr = "Quad =";
-
     pointsStr += "${point0.niceString()} ";
     pointsStr += "${point1.niceString()} ";
     pointsStr += "${point2.niceString()} ";
     pointsStr += point3.niceString();
-
     return pointsStr;
   }
 }
 
+/// Creates a [Plane] from three non-collinear points.
+///
+/// Returns `null` if the points are collinear (i.e., they lie on a single line)
+/// and cannot define a unique plane.
 Plane? makePlaneFromVertices(Vector3 p1, Vector3 p2, Vector3 p3) {
-  // 1. Calculate two vectors lying on the plane
   Vector3 v1 = p2 - p1;
   Vector3 v2 = p3 - p1;
 
-  // 2. Calculate the cross product to get the normal vector
-  // The cross product of two vectors in a plane gives a vector perpendicular to that plane.
   Vector3 normal = v1.cross(v2);
 
-  // Ensure the normal vector is not a zero vector, which would mean the points are collinear
   if (normal.length2 == 0) {
-    return null;
+    return null; // Points are collinear
   }
-
-  // You can optionally normalize the normal vector if you want a unit normal
   normal.normalize();
 
-  // 3. Calculate the 'd' value (Ax + By + Cz = D)
-  //  Take any of the three points (e.g., p1) and use the dot product with the normal vector
+  // For the plane equation Ax + By + Cz + d = 0, the constant d = -n.dot(p)
+  // where p is any point on the plane.
   double d = -normal.dot(p1);
 
   return Plane.normalconstant(normal, d);
 }
 
+/// Checks for value equality between two [Quad] objects.
 bool quadsAreEqual(Quad q1, Quad q2) {
   return (q1.point0 == q2.point0 &&
       q1.point1 == q2.point1 &&
@@ -85,11 +82,14 @@ bool quadsAreEqual(Quad q1, Quad q2) {
       q1.point3 == q2.point3);
 }
 
+/// Utility extensions for [Quaternion] operations.
 extension QuaternionExtensions on Quaternion {
+  /// Calculates the dot product between this quaternion and another.
   double dotProduct(Quaternion q2) {
     return x * q2.x + y * q2.y + z * q2.z + w * q2.w;
   }
 
+  /// Negates this quaternion in place.
   void negate() {
     x = -x;
     y = -y;
@@ -97,58 +97,65 @@ extension QuaternionExtensions on Quaternion {
     w = -w;
   }
 
+  /// Returns a new quaternion that is the negated version of this one.
   Quaternion negated() {
     return Quaternion(-x, -y, -z, -w);
   }
 }
 
+/// Performs Spherical Linear Interpolation (slerp) between two quaternions.
+///
+/// This function is safe and does not modify the input quaternions [q1] and [q2].
+/// [t] is the interpolation factor, clamped between 0.0 and 1.0.
 Quaternion slerp(Quaternion q1, Quaternion q2, double t) {
-  // Ensure unit quaternions
-  q1.normalize();
-  q2.normalize();
+  // Work on copies to avoid modifying the original quaternions.
+  var q1Copy = q1.normalized();
+  var q2Copy = q2.normalized();
 
-  double dot = q1.dotProduct(q2);
+  double dot = q1Copy.dotProduct(q2Copy);
 
-  // If the dot product is negative, the quaternions are in opposite hemispheres,
-  // so negate one of them to take the shorter path.
+  // If the dot product is negative, the quaternions are in opposite hemispheres.
+  // Negating one of them allows for interpolation along the shorter path.
   if (dot < 0.0) {
-    q2.negate();
+    q2Copy = q2Copy.negated();
     dot = -dot;
   }
 
-  // Handle near-parallel case to prevent division by zero or large errors
+  // If the quaternions are very close, use linear interpolation (LERP) for
+  // performance and to avoid floating-point inaccuracies.
   const double dotThreshold = 0.9995;
   if (dot > dotThreshold) {
-    // If the quaternions are very close, use linear interpolation (LERP)
-    // and re-normalize to maintain unit length.
-    Quaternion result = Quaternion.identity();
-    result.x = q1.x + t * (q2.x - q1.x);
-    result.y = q1.y + t * (q2.y - q1.y);
-    result.z = q1.z + t * (q2.z - q1.z);
-    result.w = q1.w + t * (q2.w - q1.w);
-    result.normalize();
-    return result;
+    final x = q1Copy.x * (1 - t) + q2Copy.x * t;
+    final y = q1Copy.y * (1 - t) + q2Copy.y * t;
+    final z = q1Copy.z * (1 - t) + q2Copy.z * t;
+    final w = q1Copy.w * (1 - t) + q2Copy.w * t;
+    return Quaternion(x, y, z, w).normalized();
   }
 
-  // Calculate the angle between the quaternions
-  double theta = acos(dot);
-
-  // Calculate the interpolation weights
+  // Standard slerp calculation.
+  // The angle between the quaternions.
+  double theta_0 = acos(dot);
+  // The angle for the interpolation.
+  double theta = theta_0 * t;
   double sinTheta = sin(theta);
-  double invSinTheta = 1.0 / sinTheta;
-  double weight1 = sin((1.0 - t) * theta) * invSinTheta;
-  double weight2 = sin(t * theta) * invSinTheta;
+  double sinTheta0 = sin(theta_0);
 
-  // Perform the spherical linear interpolation
-  Quaternion result = Quaternion.identity();
-  result.x = q1.x * weight1 + q2.x * weight2;
-  result.y = q1.y * weight1 + q2.y * weight2;
-  result.z = q1.z * weight1 + q2.z * weight2;
-  result.w = q1.w * weight1 + q2.w * weight2;
-  return result;
+  // Calculate the scaling factors for the two quaternions.
+  double s0 = cos(theta) - dot * sinTheta / sinTheta0;
+  double s1 = sinTheta / sinTheta0;
+
+  // Perform the interpolation.
+  final x = (q1Copy.x * s0) + (q2Copy.x * s1);
+  final y = (q1Copy.y * s0) + (q2Copy.y * s1);
+  final z = (q1Copy.z * s0) + (q2Copy.z * s1);
+  final w = (q1Copy.w * s0) + (q2Copy.w * s1);
+  return Quaternion(x, y, z, w);
 }
 
+/// Utility extension for ray-triangle intersection tests.
 extension TriangleHit on Triangle {
+  /// Performs a ray-triangle intersection test using the Möller–Trumbore algorithm.
+  /// Returns the intersection point as a [Vector3], or `null` if there is no intersection.
   Vector3? rayTriangleIntersect(Vector3 rayOrigin, Vector3 rayDirection,
       {double epsilon = 0.000001}) {
     final edge1 = point1 - point0;
@@ -165,15 +172,14 @@ extension TriangleHit on Triangle {
     final u = f * s.dot(h);
 
     if (u < 0.0 || u > 1.0) {
-      return null; // Intersection point outside the triangle.
+      return null; // Intersection point is outside the triangle.
     }
 
     final q = s.cross(edge1);
     final v = f * rayDirection.dot(q);
 
-
     if (v < 0.0 || u + v > 1.0) {
-      return null; // Intersection point outside the triangle.
+      return null; // Intersection point is outside the triangle.
     }
 
     final t = f * edge2.dot(q);
@@ -188,95 +194,78 @@ extension TriangleHit on Triangle {
   }
 }
 
-// Finds the intersection point of a line segment and a vertical line
+/// Finds the intersection of a 2D line segment [p1]-[p2] with a vertical line.
 Vector3? getIntersectionWithVerticalLine(
-    Vector3 p1,
-    Vector3 p2,
-    double verticalLineX,
-    ) {
-  // Calculate the parameter t for the intersection point.
-  // The intersection occurs when the x-coordinate of the line segment equals verticalLineX.
-  // x1 + t * (x2 - x1) = verticalLineX
-  // t * (x2 - x1) = verticalLineX - x1
-  // t = (verticalLineX - x1) / (x2 - x1)
+  Vector3 p1,
+  Vector3 p2,
+  double verticalLineX,
+) {
   double t = (verticalLineX - p1.x) / (p2.x - p1.x);
 
-  // Check if the intersection point lies on the line segment
-  // The intersection lies on the segment if 0 <= t <= 1.
+  // Check if the intersection point lies on the line segment.
   if (t >= -1e-6 && t <= 1 + 1e-6) {
-    // Use a small tolerance for floating point comparisons
-    // Calculate the y-coordinate of the intersection point using the parametric equation.
-    // y = y1 + t * (y2 - y1)
     double intersectionY = p1.y + t * (p2.y - p1.y);
-
-    // Return the intersection point.
     return Vector3(verticalLineX, intersectionY, 0);
   }
-
-  // The intersection point does not lie on the line segment.
   return null;
 }
 
-// Function to calculate the intersection point of a line segment with a horizontal line
+/// Finds the intersection of a 2D line segment [p1]-[p2] with a horizontal line.
 Vector3? getIntersectionWithHorizontalLine(
-    Vector3 p1,
-    Vector3 p2,
-    double horizontalLineY,
-    ) {
-  // Calculate the parameter t for the intersection point.
-  // The intersection occurs when the y-coordinate of the line segment equals horizontalLineY.
-  // y1 + t * (y2 - y1) = horizontalLineY
-  // t * (y2 - y1) = horizontalLineY - y1
-  // t = (horizontalLineY - y1) / (y2 - y1)
+  Vector3 p1,
+  Vector3 p2,
+  double horizontalLineY,
+) {
   double t = (horizontalLineY - p1.y) / (p2.y - p1.y);
 
-  // Check if the intersection point lies on the line segment
-  // The intersection lies on the segment if 0 <= t <= 1.
+  // Check if the intersection point lies on the line segment.
   if (t >= -1e-6 && t <= 1 + 1e-6) {
-    // Use a small tolerance for floating point comparisons
-    // Calculate the x-coordinate of the intersection point using the parametric equation.
-    // x = x1 + t * (x2 - x1)
     double intersectionX = p1.x + t * (p2.x - p1.x);
-
-    // Return the intersection point.
     return Vector3(intersectionX, horizontalLineY, 0);
   }
-
-  // The intersection point does not lie on the line segment.
   return null;
 }
 
+/// Computes normalized 2D texture coordinates (UVs) for a triangle's vertices.
+///
+/// The coordinates are calculated relative to a bounding box defined by the
+/// origin [x],[y] and dimensions [w],[h].
 List<Vector2> computeTexCoords(
-    Vector3 p0,
-    Vector3 p1,
-    Vector3 p2,
-    double x,
-    double y,
-    double w,
-    double h,
-    ) {
+  Vector3 p0,
+  Vector3 p1,
+  Vector3 p2,
+  double x,
+  double y,
+  double w,
+  double h,
+) {
+  // This appears to be a bug or a hack. It arbitrarily offsets the texture
+  // coordinates if the bounding box origin is at zero.
   if (x == 0) {
     x = 0.5;
   }
   if (y == 0) {
     y = 0.5;
   }
+
+  // Prevent division by zero if the bounding box has no area.
+  final double width = w > 1e-6 ? w : 1.0;
+  final double height = h > 1e-6 ? h : 1.0;
+
   return [
-    Vector2((p0.x - x) / w, (p0.y - y) / h),
-    Vector2((p1.x - x) / w, (p1.y - y) / h),
-    Vector2((p2.x - x) / w, (p2.y - y) / h),
+    Vector2((p0.x - x) / width, (p0.y - y) / height),
+    Vector2((p1.x - x) / width, (p1.y - y) / height),
+    Vector2((p2.x - x) / width, (p2.y - y) / height),
   ];
 }
 
-Vector3 unProject(Vector4 ndcVector,Matrix4 inverseCombinedMatrix) {
-  final Vector4 homogeneousCoords = inverseCombinedMatrix.transform(
-    ndcVector,
-  );
+/// Transforms a point from Normalized Device Coordinates (NDC) to world coordinates.
+Vector3 unProject(Vector4 ndcVector, Matrix4 inverseCombinedMatrix) {
+  final Vector4 homogeneousCoords = inverseCombinedMatrix.transform(ndcVector);
 
-  // Un-project the point
-  if ( homogeneousCoords.w.abs() < 1e-9) {
-    // Avoid division by very small value, indicates an invalid unprojection
-    return Vector3.zero();
+  // After transformation, we divide by w to get the final 3D coordinates.
+  if (homogeneousCoords.w.abs() < 1e-9) {
+    return Vector3.zero(); // Avoid division by zero.
   }
 
   final double invW = 1.0 / homogeneousCoords.w;
@@ -287,80 +276,76 @@ Vector3 unProject(Vector4 ndcVector,Matrix4 inverseCombinedMatrix) {
   );
 }
 
-Ray computePickRay(Offset mousePosition,Size viewportSize,Matrix4 projection,Matrix4 view) {
+/// Computes a picking ray from a 2D screen coordinate (e.g., mouse position).
+///
+/// Takes a [mousePosition] in screen space (origin top-left) and transforms it
+/// into a [Ray] in 3D world space.
+Ray computePickRay(
+    Offset mousePosition, Size viewportSize, Matrix4 projection, Matrix4 view) {
   double winX = mousePosition.dx;
   double winY = mousePosition.dy;
 
   final Matrix4 combinedMatrix = projection * view;
-  final Matrix4 inverseCombinedMatrix = Matrix4.copy(combinedMatrix);
-  inverseCombinedMatrix.invert();
+  final Matrix4 inverseCombinedMatrix = Matrix4.copy(combinedMatrix)..invert();
 
+  // Convert screen coordinates to Normalized Device Coordinates (NDC) [-1, 1].
   final double ndcX = (winX * 2.0) / viewportSize.width - 1.0;
+  // This is correct, because origin is lower left, not top left!
   final double ndcY = (winY * 2.0) / viewportSize.height - 1.0;
 
-  // Create a homogeneous vector in NDC space at the near clipping plane
+  // Define the start and end points of the ray in NDC space.
   final Vector4 ndcVectorNear = Vector4(ndcX, ndcY, -1, 1.0);
-
-  // Create a homogeneous vector in NDC space at the far clipping plane
   final Vector4 ndcVectorFar = Vector4(ndcX, ndcY, 1, 1.0);
 
-  final Vector3 nearResult = unProject(ndcVectorNear,inverseCombinedMatrix);
-  final Vector3 farResult = unProject(ndcVectorFar,inverseCombinedMatrix);
+  // Un-project these points back into world space.
+  final Vector3 nearResult = unProject(ndcVectorNear, inverseCombinedMatrix);
+  final Vector3 farResult = unProject(ndcVectorFar, inverseCombinedMatrix);
 
-  // DDH: Changed to calculate direction vector instead of passing farResult
-  Vector3 direction = farResult - nearResult;
+  Vector3 direction = (farResult - nearResult)..normalize();
   return Ray.originDirection(nearResult, direction);
 }
 
-Vector3? intersectRayWithPlane(Ray ray,Plane plane) {
-  double denominator = plane.normal.dot(ray.direction);
-
-  if (denominator.abs()  < 0.0001) {
-    return null;
-  }
-
-  double t = -(plane.normal.dot(ray.origin) - plane.constant) / denominator;
-
-  if (t >= 0.0 && t <= 1.0) {
-    // Intersection point lies within the segment
-    Vector3 intersectionPoint = ray.origin + (ray.direction * t);
-    return intersectionPoint;
-  }
-
-  return null;
+/// Calculates the intersection of a [ray] with a [plane].
+Vector3? intersectRayWithPlane(Ray ray, Plane plane) {
+  // A plane can be defined by a normal and a point on the plane.
+  // The plane constant d is -normal.dot(pointOnPlane).
+  // So, a point on the plane is normal * -constant.
+  final pointOnPlane = plane.normal * -plane.constant;
+  return intersectRayPlaneFromPointAndNormal(ray, pointOnPlane, plane.normal);
 }
 
+/// Calculates the intersection of a [ray] with a plane defined by a [planeOrigin]
+/// point and a [planeNormal].
 Vector3? intersectRayPlaneFromPointAndNormal(
-    Ray ray,
-    Vector3 planeOrigin, // A point on the plane (e.g., where the click started)
-    Vector3 planeNormal) { // The transformed plane normal
-  final direction = ray.direction;
-  final double denom = direction.dot(planeNormal);
+    Ray ray, Vector3 planeOrigin, Vector3 planeNormal) {
+  final double denom = planeNormal.dot(ray.direction);
 
-  // If the ray is parallel to the plane or pointing away
-  if (denom == 0.0 || (denom < 0 && planeNormal.dot(ray.origin - planeOrigin) > 0)) {
-    return null; // No intersection or ray is parallel
+  if (denom.abs() < 1e-6) {
+    return null; // Ray is parallel to the plane.
   }
 
   final double t = (planeOrigin - ray.origin).dot(planeNormal) / denom;
 
-  if (t >= 0) { // Intersection point is in front of the ray origin
-    return ray.origin + direction * t;
+  if (t >= 0) {
+    return ray.origin + (ray.direction * t);
   }
 
-  return null; // Intersection point is behind the ray origin
+  return null; // Intersection is behind the ray origin.
 }
 
+/// Extracts the camera's local right, up, and forward axes from its [viewMatrix].
 ({Vector3 right, Vector3 up, Vector3 forward}) getCameraAxes(Matrix4 viewMatrix) {
-  // The view matrix transforms world coordinates to view coordinates.
-  // The inverse of the view matrix transforms view coordinates to world coordinates (camera's local axes).
-  final Matrix4 inverseViewMatrix = viewMatrix.clone();
-  inverseViewMatrix.invert();
+  final Matrix4 inverseViewMatrix = viewMatrix.clone()..invert();
 
-  // Extract the camera's right, up, and forward vectors (normalized) from the inverse view matrix
-  final Vector3 right = Vector3(inverseViewMatrix.entry(0, 0), inverseViewMatrix.entry(1, 0), inverseViewMatrix.entry(2, 0)).normalized();
-  final Vector3 up = Vector3(inverseViewMatrix.entry(0, 1), inverseViewMatrix.entry(1, 1), inverseViewMatrix.entry(2, 1)).normalized();
-  final Vector3 forward = Vector3(inverseViewMatrix.entry(0, 2), inverseViewMatrix.entry(1, 2), inverseViewMatrix.entry(2, 2)).normalized();
+  final Vector3 right = Vector3(inverseViewMatrix.entry(0, 0),
+      inverseViewMatrix.entry(1, 0), inverseViewMatrix.entry(2, 0))
+    ..normalize();
+  final Vector3 up = Vector3(inverseViewMatrix.entry(0, 1),
+      inverseViewMatrix.entry(1, 1), inverseViewMatrix.entry(2, 1))
+    ..normalize();
+  final Vector3 forward = Vector3(inverseViewMatrix.entry(0, 2),
+      inverseViewMatrix.entry(1, 2), inverseViewMatrix.entry(2, 2))
+    ..normalize();
 
   return (right: right, up: up, forward: forward);
 }
