@@ -2,31 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_angle/flutter_angle.dart';
 import 'package:xml/xml.dart';
 import '../fsg_singleton.dart';
-import '../texture_manager.dart';
 
-class KerningInfo {
-  final int first; // First character code
-  final int second; // Second character code
-  final double amount; // Kerning amount
-  KerningInfo(this.first, this.second, this.amount);
-}
-
+/// A data class that holds rendering information for a single character
+/// in a [BitmapFont].
 class CharInfo {
+  /// A flag indicating if the character exists in the font.
   final bool isCharAvailable;
 
+  /// The rectangular region of the character within the font's texture atlas.
   final Rect region;
 
+  /// The horizontal offset to apply to the character when rendering.
   final double xOffset;
+
+  /// The vertical offset to apply to the character from the baseline.
   final double yOffset;
+
+  /// The horizontal distance to advance the cursor after rendering this character.
   final double xAdvance;
 
   CharInfo(
-      this.isCharAvailable,
-      this.region,
-      this.xOffset,
-      this.yOffset,
-      this.xAdvance,
-      );
+    this.isCharAvailable,
+    this.region,
+    this.xOffset,
+    this.yOffset,
+    this.xAdvance,
+  );
 
   @override
   String toString() {
@@ -34,65 +35,76 @@ class CharInfo {
   }
 }
 
+/// Represents a bitmap font, loaded from an XML `.fnt` file.
+///
+/// This class holds the font's metrics, character information, kerning pairs,
+/// and the associated WebGL texture.
 class BitmapFont {
+  /// The name of the font.
+  final String name;
+
+  /// The height of a line of text in this font.
   final double lineHeight;
 
-  /// Font LineHeight
+  /// The distance from the top of a line to the baseline of the characters.
   final double baseline;
 
-  /// Font BaseLine
+  /// The width of the texture atlas.
   final double scaleW;
 
-  /// Width of Font texture in pixels
+  /// The height of the texture atlas.
   final double scaleH;
 
-  /// Height of Font texture in pixels
-
+  /// A map of character strings to their corresponding [CharInfo] data.
   final Map<String, CharInfo> chars;
 
-  bool initialized = false;
+  /// A nested map for efficient kerning lookups.
+  /// The outer key is the first character's code unit, the inner key is the
+  /// second character's code unit, and the value is the kerning amount.
+  final Map<int, Map<int, double>> kerningPairs;
 
-  // KerningInfo is a map with the first character as the key and a list of KerningInfo objects as the value.
-  final Map<int, List<KerningInfo>> kerningPairs;
-
+  /// The WebGL texture containing the rendered font characters (the texture atlas).
+  /// This is null until [loadTexture] is called and completes.
   WebGLTexture? fontTexture;
 
-  final String name;
-  BitmapFont(
-      this.name,
-      this.lineHeight,
-      this.baseline,
-      this.scaleW,
-      this.scaleH,
-      this.chars,
-      this.kerningPairs,
-      );
-  void loadTexture(String textureName) async {
-    fontTexture = await FSG().textureManager.createTextureFromAsset(
-      textureName,
-    );
+  /// Returns true if the font's texture has been loaded and is ready for use.
+  bool get isInitialized => fontTexture != null;
 
-    initialized = true;
+  /// Creates a new BitmapFont.
+  BitmapFont(
+    this.name,
+    this.lineHeight,
+    this.baseline,
+    this.scaleW,
+    this.scaleH,
+    this.chars,
+    this.kerningPairs,
+  );
+
+  /// Asynchronously loads the font's texture from assets.
+  ///
+  /// This method uses NEAREST filtering to ensure crisp, pixel-perfect font rendering.
+  Future<void> loadTexture(String textureName) async {
+    fontTexture = await FSG().textureManager.createTextureFromAsset(
+          textureName,
+          magFilter: WebGL.NEAREST,
+          minFilter: WebGL.NEAREST,
+          wrapS: WebGL.CLAMP_TO_EDGE,
+          wrapT: WebGL.CLAMP_TO_EDGE,
+        );
   }
 
-  static BitmapFont loadFromXML(String name, String xmlString) {
+  /// Factory constructor to load and parse a BitmapFont from an XML string.
+  factory BitmapFont.fromXml(String name, String xmlString) {
     final document = XmlDocument.parse(xmlString);
 
-    // Access the <info> element
-    // This data is present in the file but currently unused
-    //final infoElement = document.findAllElements('info').first;
-    //final face = infoElement.getAttribute('face');
-    //final size = int.parse(infoElement.getAttribute('size')!);
-
-    // Access the <common> element
     final commonElement = document.findAllElements('common').first;
     final lineHeight = int.parse(commonElement.getAttribute('lineHeight')!);
     final base = int.parse(commonElement.getAttribute('base')!);
     final scaleW = int.parse(commonElement.getAttribute('scaleW')!);
     final scaleH = int.parse(commonElement.getAttribute('scaleH')!);
 
-    Map<String, CharInfo> chars = {};
-    // Access the <char> elements
+    final chars = <String, CharInfo>{};
     final charElements = document.findAllElements('char');
     for (final charElement in charElements) {
       final id = int.parse(charElement.getAttribute('id')!);
@@ -106,7 +118,7 @@ class BitmapFont {
 
       chars.putIfAbsent(
         String.fromCharCode(id),
-            () => CharInfo(
+        () => CharInfo(
           true,
           Rect.fromLTWH(
             x.toDouble(),
@@ -121,18 +133,15 @@ class BitmapFont {
       );
     }
 
-    final kerningsSection = document.findAllElements('kernings').first;
-
-    final kerningElements = kerningsSection.findAllElements('kerning');
-    Map<int, List<KerningInfo>> kerningPairs = {};
-
+    final kerningPairs = <int, Map<int, double>>{};
+    final kerningElements = document.findAllElements('kerning');
     for (final kerningElement in kerningElements) {
       final first = int.parse(kerningElement.getAttribute('first')!);
       final second = int.parse(kerningElement.getAttribute('second')!);
       final amount = int.parse(kerningElement.getAttribute('amount')!);
 
-      List<KerningInfo> kerningList = kerningPairs.putIfAbsent(first, () => []);
-      kerningList.add(KerningInfo(first, second, amount.toDouble()));
+      final innerMap = kerningPairs.putIfAbsent(first, () => {});
+      innerMap[second] = amount.toDouble();
     }
 
     return BitmapFont(
@@ -145,41 +154,33 @@ class BitmapFont {
       kerningPairs,
     );
   }
+
+  /// Returns the kerning amount between two character codes.
+  /// Returns 0.0 if no specific kerning is defined for the pair.
   double kerningForPair(int first, int second) {
-    List<KerningInfo>? kerningPairList = kerningPairs[first];
-
-    if (kerningPairList != null) {
-      for (var kerning in kerningPairList) {
-        if (kerning.first == first && kerning.second == second) {
-          return kerning.amount;
-        }
-      }
-    }
-
-    return 0.0;
+    return kerningPairs[first]?[second] ?? 0.0;
   }
 
+  /// Calculates the total width of a string if rendered with this font.
   double widthOfString(String str) {
     double lineLength = 0.0;
 
     for (int i = 0; i < str.length; i++) {
-      // Get the code unit (UTF-16) for the character at the current index
       final CharInfo? charInfo = chars[str[i]];
 
       double kerning = 0.0;
 
       if (charInfo != null) {
-        // If not the last character, look up kerning info for this character and the next
         if ((i + 1) < str.length) {
           kerning = kerningForPair(str.codeUnitAt(i), str.codeUnitAt(i + 1));
         }
-
         lineLength += charInfo.xAdvance + kerning;
       }
     }
-
     return lineLength;
   }
+
+  /// Calculates the size of the bounding box for a single line of text.
   Size sizeOfString(String str) {
     return Size(widthOfString(str), lineHeight);
   }

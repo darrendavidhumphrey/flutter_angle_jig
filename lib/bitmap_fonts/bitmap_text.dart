@@ -7,71 +7,92 @@ import '../reference_box.dart';
 import '../vertex_buffer.dart';
 import 'bitmap_font.dart';
 
+/// A class that manages the geometry and rendering for a single line of text
+/// using a [BitmapFont].
+///
+/// It generates a set of quads for the text, scaled to fit within a target
+/// [ReferenceBox], and manages the associated [VertexBuffer] for rendering.
 class BitmapText {
+  /// The list of 3D quads representing the geometry of each character.
   List<Quad> quads = [];
+
+  /// The list of texture coordinate rectangles corresponding to each character quad.
   List<Rect> textureQuads = [];
 
-  String _text = "";
+  String _text;
 
+  /// The [ReferenceBox] that defines the target area for the text to be rendered into.
   final ReferenceBox _screenRect;
 
   bool _needsRebuild = true;
+
+  /// A flag indicating if the text geometry needs to be recalculated.
   bool get needsRebuild => _needsRebuild;
 
+  /// The text string to be rendered.
   String get text => _text;
 
   late BitmapFont _font;
+
+  /// The [BitmapFont] to use for rendering.
   BitmapFont get font => _font;
 
   late double _width;
 
+  /// The vertex buffer object that holds the geometry for rendering.
   VertexBuffer? vbo;
 
+  /// Creates a [BitmapText] object.
+  ///
+  /// - [_font]: The font to use for rendering.
+  /// - [_text]: The initial text string.
+  /// - [_screenRect]: The target area for the text.
   BitmapText(this._font, this._text, this._screenRect) {
+    // Cache the target width from the reference box.
     _width = _screenRect.xVector.length;
   }
 
+  /// Disposes the vertex buffer associated with this text.
   void dispose() {
     if (vbo != null) {
       vbo!.dispose();
     }
   }
 
-  // For debugging
-  void setNeedsRebuild() {
-    _needsRebuild = true;
-  }
-
+  /// Sets a new font and flags the text for a rebuild.
   void setFont(BitmapFont font) {
-    _font = font;
-    _needsRebuild = true;
+    if (_font != font) {
+      _font = font;
+      _needsRebuild = true;
+    }
   }
 
+  /// Sets a new text string and flags the text for a rebuild.
   void setText(String text) {
-    _text = text;
-    _needsRebuild = true;
+    if (_text != text) {
+      _text = text;
+      _needsRebuild = true;
+    }
   }
 
-  double kerningForPair(int first, int second) {
-    return _font.kerningForPair(first, second);
-  }
-
-  double widthOfString(String str) {
-    return _font.widthOfString(str);
-  }
-
+  /// Rebuilds the vertex buffer object if the text or font has changed.
   void rebuild(RenderingContext gl, DateTime now) {
+    // Guard against unnecessary, expensive rebuilds.
+    if (!_needsRebuild) return;
+
     rebuildQuads();
 
+    // Create the VBO if it doesn't exist.
     vbo ??= VertexBuffer.v3t2(gl);
 
-    int vertexCount = _text.length * 6; // Two triangles per character quad
+    int vertexCount = quads.length * 6; // Two triangles per character quad.
 
     Float32Array? vertexTexCoordArray = vbo!.requestBuffer(vertexCount);
 
     if (vertexTexCoordArray != null) {
-      Float32ArrayFiller filler = Float32ArrayFiller(vertexTexCoordArray);
+      final filler = Float32ArrayFiller(vertexTexCoordArray);
 
+      // Fill the VBO with the generated quad data.
       for (int i = 0; i < quads.length; i++) {
         Quad rect = quads[i];
         Rect textureRect = textureQuads[i];
@@ -81,71 +102,82 @@ class BitmapText {
     }
 
     vbo!.setActiveVertexCount(vertexCount);
+    _needsRebuild = false; // Reset the flag after a successful rebuild.
   }
 
+  /// Rebuilds the list of geometry and texture quads for the current text string.
+  ///
+  /// This uses a two-pass approach for efficiency:
+  /// 1. First pass gathers character data and calculates the total unscaled line length.
+  /// 2. Second pass pre-allocates lists and generates the final scaled and transformed quads.
   void rebuildQuads() {
-    quads.clear();
-    textureQuads.clear();
-
-    double lineLength = widthOfString(text);
-    double ratio = _width / lineLength;
-    double currentX = 0;
-    double lineHeight = _font.lineHeight * ratio;
-    double vCenter = -lineHeight / 2;
-
-    double textureScaleW = _font.scaleW;
-    double textureScaleH = _font.scaleH;
-
-    for (int i = 0; i < _text.length; i++) {
-      CharInfo? charInfo = _font.chars[_text[i]];
-
-      if (charInfo != null) {
-        double kerning = 0.0;
-
-        // If not the last character, look up kerning info for this character and the next
-        if ((i + 1) < _text.length) {
-          kerning = kerningForPair(
-            _text.codeUnitAt(i),
-            _text.codeUnitAt(i + 1),
-          );
-        }
-
-        Vector2 blc = Vector2(
-          currentX + charInfo.xOffset * ratio,
-          charInfo.region.height * ratio + vCenter,
-        );
-        Vector2 trc = Vector2(
-          currentX + charInfo.xOffset * ratio + charInfo.region.width * ratio,
-          vCenter,
-        );
-
-        Quad charRect = _screenRect.calcQuadFrom2DVectors(blc, trc);
-
-        quads.add(charRect);
-
-        double tLeft = charInfo.region.left / textureScaleW;
-        double tTop =
-            1 -
-                (textureScaleH - (charInfo.region.top + charInfo.region.height)) /
-                    textureScaleH;
-
-        Rect textureQuad;
-        if (_text[i] == ' ') {
-          textureQuad = Rect.zero;
-        } else {
-          textureQuad = Rect.fromLTRB(
-            tLeft,
-            tTop,
-            tLeft + charInfo.region.width / textureScaleW,
-            tTop - charInfo.region.height / textureScaleH,
-          );
-        }
-        textureQuads.add(textureQuad);
-
-        currentX += (charInfo.xAdvance + kerning) * ratio;
-      }
+    if (text.isEmpty) {
+      quads = [];
+      textureQuads = [];
+      return;
     }
 
-    _needsRebuild = false;
+    // --- Pass 1: Gather layout information and calculate total width ---
+    final layoutData = <({CharInfo char, double kerning})>[];
+    double lineLength = 0;
+
+    for (int i = 0; i < _text.length; i++) {
+      final charInfo = _font.chars[_text[i]];
+      if (charInfo == null) continue;
+
+      double kerning = 0.0;
+      if ((i + 1) < _text.length) {
+        kerning = _font.kerningForPair(
+          _text.codeUnitAt(i),
+          _text.codeUnitAt(i + 1),
+        );
+      }
+      layoutData.add((char: charInfo, kerning: kerning));
+      lineLength += charInfo.xAdvance + kerning;
+    }
+
+    // --- Pass 2: Pre-allocate lists and generate scaled quads ---
+    final characterCount = layoutData.length;
+    quads = List<Quad>.filled(characterCount, Quad());
+    textureQuads = List<Rect>.filled(characterCount, Rect.zero);
+
+    double currentX = 0;
+    final double ratio = (lineLength > 0) ? _width / lineLength : 1.0;
+    final double lineHeight = _font.lineHeight * ratio;
+    final double vCenter = -lineHeight / 2.0;
+
+    for (int i = 0; i < characterCount; i++) {
+      final data = layoutData[i];
+      final charInfo = data.char;
+      final kerning = data.kerning;
+
+      // Calculate unscaled vertex positions relative to the baseline
+      final top = _font.baseline - charInfo.yOffset;
+      final bottom = top - charInfo.region.height;
+      final left = currentX + charInfo.xOffset;
+      final right = left + charInfo.region.width;
+
+      final unscaledQuad = Quad.points(
+        Vector3(left, bottom, 0), // Bottom-left
+        Vector3(right, bottom, 0), // Bottom-right
+        Vector3(right, top, 0), // Top-right
+        Vector3(left, top, 0), // Top-left
+      );
+
+      // Scale the quad to fit the target width and vertically center it.
+      final blc = Vector2(unscaledQuad.point0.x * ratio, unscaledQuad.point0.y * ratio + vCenter);
+      final trc = Vector2(unscaledQuad.point2.x * ratio, unscaledQuad.point2.y * ratio + vCenter);
+      // Transform the 2D scaled quad into the 3D space of the reference box.
+      quads[i] = _screenRect.calcQuadFrom2DVectors(blc, trc);
+
+      // Calculate normalized texture coordinates from the font atlas region.
+      final tLeft = charInfo.region.left / _font.scaleW;
+      final tTop = charInfo.region.top / _font.scaleH;
+      final tRight = (charInfo.region.left + charInfo.region.width) / _font.scaleW;
+      final tBottom = (charInfo.region.top + charInfo.region.height) / _font.scaleH;
+      textureQuads[i] = Rect.fromLTRB(tLeft, tTop, tRight, tBottom);
+
+      currentX += charInfo.xAdvance + kerning;
+    }
   }
 }

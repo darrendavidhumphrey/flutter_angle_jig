@@ -48,7 +48,7 @@ class FSG with LoggableClass {
   final materials = MaterialList();
 
   /// The manager for bitmap fonts.
-  final fonts = BitmapFontList();
+  final fontManager = BitmapFontManager();
 
   /// The manager for textures loaded from assets.
   final textureManager = TextureManager();
@@ -124,7 +124,7 @@ class FSG with LoggableClass {
     initDefaultMaterial();
 
     shaders.init(gl);
-    BitmapFontList().createDefaultFont();
+    fontManager.createDefaultFont();
     _state = _FsgState.contextInitialized;
   }
 
