@@ -29,10 +29,12 @@ class PolylineClipper {
   }
 
   /// Clips an input polygon (a flat list of vertex data) against a single edge.
-  /// This method is optimized to avoid Vector allocations in its inner loop.
+  /// This method is optimized to avoid allocations in its inner loop.
   Float32List _clipAgainstEdge(Float32List vertices, ClipEdge edge) {
-    final List<double> outputList = [];
     if (vertices.isEmpty) return Float32List(0);
+
+    final outputBuffer = Float32List(vertices.length * 2);
+    int outputComponentCount = 0;
 
     double sX = vertices[vertices.length - 3];
     double sY = vertices[vertices.length - 2];
@@ -43,41 +45,54 @@ class PolylineClipper {
       final pY = vertices[i + 1];
       final pZ = vertices[i + 2];
 
-      // Perform dot product manually to avoid Vector2 allocation.
       final bool sInside = (edge.normal.x * (sX - edge.pointOnEdge.x) + edge.normal.y * (sY - edge.pointOnEdge.y)) >= 0;
       final bool pInside = (edge.normal.x * (pX - edge.pointOnEdge.x) + edge.normal.y * (pY - edge.pointOnEdge.y)) >= 0;
 
       if (sInside && pInside) {
-        outputList.addAll([pX, pY, pZ]);
+        outputBuffer[outputComponentCount++] = pX;
+        outputBuffer[outputComponentCount++] = pY;
+        outputBuffer[outputComponentCount++] = pZ;
       } else if (sInside && !pInside) {
-        final intersection = _getIntersection(sX, sY, sZ, pX, pY, pZ, edge);
-        outputList.addAll([intersection.x, intersection.y, intersection.z]);
+        _getIntersection(outputBuffer, outputComponentCount, sX, sY, sZ, pX, pY, pZ, edge);
+        outputComponentCount += 3;
       } else if (!sInside && pInside) {
-        final intersection = _getIntersection(sX, sY, sZ, pX, pY, pZ, edge);
-        outputList.addAll([intersection.x, intersection.y, intersection.z]);
-        outputList.addAll([pX, pY, pZ]);
+        _getIntersection(outputBuffer, outputComponentCount, sX, sY, sZ, pX, pY, pZ, edge);
+        outputComponentCount += 3;
+        outputBuffer[outputComponentCount++] = pX;
+        outputBuffer[outputComponentCount++] = pY;
+        outputBuffer[outputComponentCount++] = pZ;
       }
       
       sX = pX;
       sY = pY;
       sZ = pZ;
     }
-    return Float32List.fromList(outputList);
+    return Float32List.sublistView(outputBuffer, 0, outputComponentCount);
   }
 
-  /// Calculates the 3D intersection point from raw vertex components.
-  Vector3 _getIntersection(
-      double sX, double sY, double sZ, double pX, double pY, double pZ, ClipEdge edge) {
+  /// Calculates the intersection and writes it directly into the output buffer.
+  void _getIntersection(
+      Float32List outputBuffer, int writeIndex,
+      double sX, double sY, double sZ, 
+      double pX, double pY, double pZ, 
+      ClipEdge edge) {
     final dX = pX - sX;
     final dY = pY - sY;
     final dZ = pZ - sZ;
 
     final denominator = edge.normal.x * dX + edge.normal.y * dY;
-    if (denominator.abs() < _epsilon) return Vector3(sX, sY, sZ);
+    if (denominator.abs() < _epsilon) {
+      outputBuffer[writeIndex] = sX;
+      outputBuffer[writeIndex + 1] = sY;
+      outputBuffer[writeIndex + 2] = sZ;
+      return;
+    }
 
     final t = -(edge.normal.x * (sX - edge.pointOnEdge.x) + edge.normal.y * (sY - edge.pointOnEdge.y)) / denominator;
     
-    return Vector3(sX + dX * t, sY + dY * t, sZ + dZ * t);
+    outputBuffer[writeIndex] = sX + dX * t;
+    outputBuffer[writeIndex + 1] = sY + dY * t;
+    outputBuffer[writeIndex + 2] = sZ + dZ * t;
   }
 
   /// Cleans the final list of vertices by removing duplicates and creates a Polyline.
