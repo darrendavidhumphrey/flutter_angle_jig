@@ -1,14 +1,24 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:fsg/scene.dart';
-import 'package:fsg/ui/render_to_texture.dart';
+import 'package:fsg/ui/render_to_texture_core.dart';
 import 'package:fsg/ui/scene_navigation_delegate.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 
+/// A widget that renders a [Scene] and provides user interaction capabilities.
+///
+/// This widget builds upon [RenderToTextureCore] by adding a [GestureDetector],
+/// a [Listener] for mouse events, and a [Focus] widget for keyboard events.
+/// It forwards all user input to a [SceneNavigationDelegate] to control the scene.
 class InteractiveRenderToTexture extends StatefulWidget {
+  /// The scene to be rendered.
   final Scene scene;
+
+  /// The delegate responsible for handling user input and navigating the scene.
   final SceneNavigationDelegate? navigationDelegate;
+
+  /// If true, the scene will automatically pause when it is not visible.
   final bool automaticallyPause;
+
   const InteractiveRenderToTexture({
     super.key,
     this.automaticallyPause = true,
@@ -17,79 +27,73 @@ class InteractiveRenderToTexture extends StatefulWidget {
   });
 
   @override
-  OrbitViewState createState() => OrbitViewState();
+  InteractiveRenderToTextureState createState() =>
+      InteractiveRenderToTextureState();
 }
 
-class OrbitViewState extends State<InteractiveRenderToTexture> {
+class InteractiveRenderToTextureState
+    extends State<InteractiveRenderToTexture> {
   late FocusNode _focusNode;
-  final Key _pauseKey = UniqueKey();
 
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
-    if (widget.automaticallyPause) {
-      widget.scene.isPaused = true;
+    // Set the scene on the delegate when the widget is first created.
+    widget.navigationDelegate?.setScene(widget.scene);
+  }
+
+  @override
+  void didUpdateWidget(covariant InteractiveRenderToTexture oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the scene or delegate changes, update the delegate.
+    if (widget.scene != oldWidget.scene ||
+        widget.navigationDelegate != oldWidget.navigationDelegate) {
+      widget.navigationDelegate?.setScene(widget.scene);
     }
   }
 
   @override
+  void dispose() {
+    // Dispose the FocusNode to prevent memory leaks.
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-
-    if (widget.navigationDelegate != null) {
-      widget.navigationDelegate!.setScene(widget.scene);
-    }
-    // TODO: Force the initial update
-    // TODO: Handle all other events
-
-    return VisibilityDetector(
-      key: _pauseKey,
-      onVisibilityChanged: (visibilityInfo) {
-        if (widget.automaticallyPause) {
-          bool visible = (visibilityInfo.visibleFraction > 0);
-          widget.scene.isPaused = !visible;
-        }
-      },
+    // The core rendering widget, wrapped with interaction listeners.
+    final core = RenderToTextureCore(
+      scene: widget.scene,
+      automaticallyPause: widget.automaticallyPause,
+      // The child is a stack of gesture detectors that capture user input.
       child: GestureDetector(
         onTapDown: (TapDownDetails event) {
-          if (widget.navigationDelegate != null) {
-            widget.navigationDelegate!.onTapDown(event);
-          }
+          _focusNode.requestFocus();
+          widget.navigationDelegate?.onTapDown(event);
         },
-        child: Focus(
-          autofocus: true,
-          focusNode: _focusNode,
-          onKeyEvent: (node, event) {
-            // TODO: Handle keyboard event
-            return KeyEventResult.ignored;
+        child: Listener(
+          onPointerSignal: (event) {
+            if (event is PointerScrollEvent) {
+              widget.navigationDelegate?.onPointerScroll(event);
+            }
           },
-          child: Listener(
-            onPointerSignal: (event) {
-              if (!_focusNode.hasFocus) {
-                _focusNode.requestFocus();
-              }
-              if (event is PointerScrollEvent) {
-                if (widget.navigationDelegate != null) {
-                  widget.navigationDelegate!.onPointerScroll(event);
-                }
-              }
-            },
-
-            onPointerMove: (event) {
-              if (!_focusNode.hasFocus) {
-                _focusNode.requestFocus();
-              }
-              if (widget.navigationDelegate != null) {
-                widget.navigationDelegate!.onPointerMove(event);
-              }
-            },
-
-            child: RenderToTexture(scene: widget.scene),
-          ),
+          onPointerMove: (event) {
+            widget.navigationDelegate?.onPointerMove(event);
+          },
         ),
       ),
     );
+
+    // The Focus widget wraps everything to capture keyboard events.
+    return Focus(
+      autofocus: true,
+      focusNode: _focusNode,
+      onKeyEvent: (node, event) {
+        return widget.navigationDelegate?.onKeyEvent(event) ??
+            KeyEventResult.ignored;
+      },
+      child: core,
+    );
   }
 }
-
-

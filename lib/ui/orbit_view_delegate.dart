@@ -1,11 +1,15 @@
 import 'dart:math';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:fsg/ui/scene_navigation_delegate.dart';
 import 'package:vector_math/vector_math_64.dart';
 import '../scene.dart';
 import '../util.dart';
 
-
+/// A navigation delegate that implements a classic 3D orbit camera.
+///
+/// This class handles user input to rotate (orbit) around a central point,
+/// and zoom (dolly) the camera towards and away from that point.
 class OrbitView implements SceneNavigationDelegate {
   static const double _initialYaw = 0;
   static const double _initialPitch = 0;
@@ -13,61 +17,53 @@ class OrbitView implements SceneNavigationDelegate {
   final double verticalFieldOfView = radians(60);
 
   double _yaw = _initialYaw;
-
+  @override
   double get yaw => _yaw;
 
   double _pitch = _initialPitch;
-
+  @override
   double get pitch => _pitch;
 
   double _distance = 300;
-
+  @override
   double get distance => _distance;
 
+  // State variables for drag-based rotation.
   Offset _dragStart = Offset.zero;
   double _yawStart = 0;
   double _pitchStart = 0;
 
-  Plane _projectPlane = Plane();
+  /// A plane at z=0 used for calculating logical coordinates from a pick ray.
+  final Plane _projectPlane = makePlaneFromVertices(
+    Vector3.zero(),
+    Vector3(1, 0, 0),
+    Vector3(0, 1, 0),
+  )!;
 
   final Matrix4 _projectionMatrix = Matrix4.identity();
   Matrix4 _viewMatrix = Matrix4.identity();
 
-  Scene? scene;
+  late Scene _scene;
+  @override
+  Scene get scene => _scene;
 
-
-  OrbitView() {
-    _projectPlane = makePlaneFromVertices(
-      Vector3.zero(),
-      Vector3(1, 0, 0),
-      Vector3(0, 1, 0),
-    )!;
-  }
-
+  /// Wraps an angle to be in the range [0, 360).
   double _clampAngle0To360(double angle) {
-    // Normalize to be within 0 and 360 using modulo
-    double clamped = angle % 360;
-
-    // If the result is negative, add 360 to bring it into the positive range
-    if (clamped < 0) {
-      clamped += 360;
-    } else if (clamped > 360) {
-      clamped -= 360;
-    }
-    return clamped;
+    return angle % 360;
   }
 
+  /// Re-calculates the scene's view and projection matrices and requests a repaint.
   void updateSceneMatrices() {
-    if (scene != null) {
-      scene!.mvMatrixStack.current = createViewMatrix();
-      scene!.pMatrix = createProjectionMatrix();
-      scene!.requestRepaint();
+    if (scene.isInitialized) {
+      scene.mvMatrixStack.current = createViewMatrix();
+      scene.pMatrix = createProjectionMatrix();
+      scene.requestRepaint();
     }
   }
 
   @override
   void setScene(Scene scene) {
-    this.scene = scene;
+    _scene = scene;
     updateSceneMatrices();
   }
 
@@ -76,24 +72,35 @@ class OrbitView implements SceneNavigationDelegate {
     _dragStart = event.localPosition;
     _yawStart = yaw;
     _pitchStart = pitch;
-    updateSceneMatrices();
+  }
+
+  @override
+  void onPointerUp(PointerUpEvent event) {
+    _dragStart = Offset.zero;
+  }
+
+  @override
+  void onPointerCancel(PointerCancelEvent event) {
+    // Treat cancel as a pointer up event to reset state.
+    onPointerUp(PointerUpEvent(position: event.position));
   }
 
   @override
   void onTapDown(TapDownDetails event) {
-    _dragStart = event.localPosition;
-    _yawStart = yaw;
-    _pitchStart = pitch;
-    updateSceneMatrices();
+    onPointerDown(PointerDownEvent(position: event.localPosition));
   }
 
   @override
   void onPointerMove(PointerMoveEvent event) {
+    if (_dragStart == Offset.zero) return;
+
     final deltaX = _dragStart.dx - event.localPosition.dx;
     final deltaY = _dragStart.dy - event.localPosition.dy;
 
-    final double yawSensitivity = 1 / scene!.viewportSize.width;
-    final double pitchSensitivity = 1 / scene!.viewportSize.height;
+    // Scale sensitivity by viewport size to make rotation feel consistent
+    // regardless of widget size.
+    final double yawSensitivity = 1 / scene.viewportSize.width;
+    final double pitchSensitivity = 1 / scene.viewportSize.height;
     final double deltaYaw = deltaX * yawSensitivity * pi;
     final double deltaPitch = deltaY * pitchSensitivity * pi;
 
@@ -108,9 +115,9 @@ class OrbitView implements SceneNavigationDelegate {
   @override
   void onPointerScroll(PointerScrollEvent event) {
     const double minRadius = 3;
-
     double viewRadius = distance;
 
+    // Use a logarithmic scale for zooming to make it feel more natural.
     double deltaRadius = -log(distance) / log(2);
 
     if (event.scrollDelta.dy < 0) {
@@ -126,54 +133,63 @@ class OrbitView implements SceneNavigationDelegate {
     updateSceneMatrices();
   }
 
+  /// Sets the distance of the camera from the orbit center.
   void setViewDistance(double distance) {
     _distance = distance;
   }
 
+  /// Creates the view matrix based on the current yaw, pitch, and distance.
   Matrix4 createViewMatrix() {
     Vector3 up = Vector3(0, 1, 0);
     Vector3 orbitCenter = getOrbitCenter();
-    
+
+    // Use the library's makeViewMatrix for a correct look-at matrix.
     _viewMatrix = makeViewMatrix(getEyeLocation(), orbitCenter, up);
 
-    _viewMatrix.translateByVector3(orbitCenter);
+    // Apply rotations around the orbit center.
+    _viewMatrix.translate(orbitCenter);
     _viewMatrix.rotateZ(radians(180));
     _viewMatrix.rotateY(radians(yaw));
     _viewMatrix.rotateX(radians(pitch));
-    _viewMatrix.translateByVector3(-orbitCenter);
+    _viewMatrix.translate(-orbitCenter);
     return _viewMatrix;
   }
 
+  /// Calculates the camera's position in 3D space.
   Vector3 getEyeLocation() {
     return Vector3(0, 0, -distance);
   }
 
+  /// The point in space that the camera orbits around.
   Vector3 getOrbitCenter() {
-    return Vector3(0,0,0);
+    return Vector3(0, 0, 0);
   }
 
+  /// Converts a 2D screen position into a 3D coordinate on the logical Z=0 plane.
   Vector3? getLogicalCoordinates(Offset mousePosition) {
     Ray ray = computePickRay(
       mousePosition,
-      scene!.viewportSize,
+      scene.viewportSize,
       _projectionMatrix,
       _viewMatrix,
     );
     return intersectRayWithPlane(ray, _projectPlane);
   }
 
+  /// Gets the world-space picking ray for a given screen position.
   Ray getWorldRay(Offset mousePosition) {
     Ray ray = computePickRay(
       mousePosition,
-      scene!.viewportSize,
+      scene.viewportSize,
       _projectionMatrix,
       _viewMatrix,
     );
     return ray;
   }
 
+  /// Creates the perspective projection matrix.
   Matrix4 createProjectionMatrix() {
-    final double aspectRatio = scene!.viewportSize.width / scene!.viewportSize.height;
+    final double aspectRatio = scene.viewportSize.width / scene.viewportSize.height;
 
     setPerspectiveMatrix(
       _projectionMatrix,
@@ -184,5 +200,16 @@ class OrbitView implements SceneNavigationDelegate {
     );
 
     return _projectionMatrix;
+  }
+
+  @override
+  KeyEventResult onKeyEvent(KeyEvent event) {
+    // TODO: Implement keyboard controls for orbit, pan, or zoom.
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  void dispose() {
+    // No resources to dispose of in this specific implementation.
   }
 }

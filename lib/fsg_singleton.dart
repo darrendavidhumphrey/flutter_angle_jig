@@ -8,33 +8,63 @@ import 'logging.dart';
 import 'bitmap_fonts/bitmap_font_manager.dart';
 import 'scene.dart';
 
-// Enum to manage the initialization state of the FSG singleton.
+/// Enum to manage the initialization state of the FSG singleton.
 enum _FsgState {
+  /// The engine has not been initialized at all.
   uninitialized,
+
+  /// The core FlutterAngle engine is ready, but no GL context has been created.
   glInitialized,
+
+  /// A GL context has been created and context-specific resources are initialized.
   contextInitialized,
 }
 
+/// The main singleton for the rendering engine.
+///
+/// This class is responsible for managing global state, including the FlutterAngle
+/// engine instance, scenes, and shared resources like shaders, materials, and
+/// textures.
 class FSG with LoggableClass {
+  /// The core FlutterAngle engine instance.
   FlutterAngle angle = FlutterAngle();
+
+  /// The current initialization state of the engine.
   _FsgState _state = _FsgState.uninitialized;
 
+  /// The default size for textures that are rendered to.
   static double renderToTextureSize = 4096;
+
+  /// A map of all registered scenes and their corresponding output textures.
   final Map<Scene, FlutterAngleTexture> scenes = {};
+
+  /// The manager for all shader programs.
   final shaders = ShaderList();
+
+  /// A list of all textures created by the engine, for later disposal.
   final renderToTextureList = <FlutterAngleTexture>[];
+
+  /// The manager for all rendering materials.
   final materials = MaterialList();
+
+  /// The manager for bitmap fonts.
   final fonts = BitmapFontList();
+
+  /// The manager for textures loaded from assets.
   final textureManager = TextureManager();
 
+  /// The singleton instance.
   static final FSG _singleton = FSG._internal();
 
+  /// A model for tracking and displaying the frame rate.
   late FrameCounterModel frameCounter;
 
+  /// Factory constructor to return the singleton instance.
   factory FSG() {
     return _singleton;
   }
 
+  /// Internal constructor for the singleton.
   FSG._internal();
 
   /// Initializes the core FlutterAngle engine.
@@ -85,6 +115,7 @@ class FSG with LoggableClass {
   }
 
   /// Initializes shared context-specific resources like shaders and textures.
+  /// This is called once a GL context becomes available.
   void initContext(RenderingContext gl) {
     if (_state == _FsgState.contextInitialized) {
       return;
@@ -98,12 +129,21 @@ class FSG with LoggableClass {
   }
 
   /// Disposes all scenes, textures, shaders, and other GPU resources.
+  /// This is critical for preventing memory leaks on hot reload.
   Future<void> dispose() async {
     for (var scene in scenes.keys) {
       scene.dispose();
     }
 
     // TODO: Dispose textures
+    // To prevent memory leaks, all textures in `renderToTextureList` must be
+    // disposed of. The correct method is `angle.disposeTexture(texture)`,
+    // as the `angle` instance is responsible for managing the lifecycle of the
+    // textures it creates.
+    // Example:
+    // for (var texture in renderToTextureList) {
+    //   angle.disposeTexture(texture);
+    // }
 
     scenes.clear();
     renderToTextureList.clear();
@@ -117,9 +157,8 @@ class FSG with LoggableClass {
     }
   }
 
-  // Use this method to register your scene with FSG and allocate a texture for the scene
-  // FSG scenes are rendered to a texture and then composited into flutter using either
-  // the RenderToTexture widget or InteractiveRenderToTextureWidget
+  /// Registers a scene with the engine and allocates a texture for it to render to.
+  /// This is the primary method for setting up a new renderable scene.
   Future<bool> registerSceneAndAllocateTexture(Scene scene) async {
     final options = AngleOptions(
       width: scene.textureWidth,
@@ -129,7 +168,7 @@ class FSG with LoggableClass {
       useSurfaceProducer: true,
     );
 
-    // Allocate an open GL texture for each scene
+    // Allocate an OpenGL texture for the scene.
     var textureId = await allocTexture(options);
 
     bool success = (textureId != null);
