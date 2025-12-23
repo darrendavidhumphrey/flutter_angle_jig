@@ -1,157 +1,113 @@
 import 'package:fsg/polyline.dart';
 import 'package:vector_math/vector_math_64.dart';
 
-// Implementation of the Cyrus-Beck line clipping algorithm for a 2D convex polygon.
-
 /// Represents one edge of the convex clipping polygon, defined by a point on the
-/// edge and an outward-pointing normal vector.
+/// edge and an inward-pointing normal vector.
 class ClipEdge {
-  /// The normal vector of the edge, pointing away from the clip region's interior.
   final Vector2 normal;
-
-  /// Any point that lies on the infinite line defined by the edge.
   final Vector2 pointOnEdge;
 
   ClipEdge(this.normal, this.pointOnEdge);
 }
 
 /// A class that clips a [Polyline] against a rectangular boundary using the
-/// Cyrus-Beck algorithm.
+/// Sutherland-Hodgman algorithm.
 class PolylineClipper {
-  /// The list of clipping edges that define the clipping boundary.
   final List<ClipEdge> clipEdges;
-  static const double epsilon = 1e-4;
+  static const double _epsilon = 1e-6;
 
-  /// Precomputes the four clipping edges from the boundaries of a rectangle.
-  /// Assumes a Y-up coordinate system where `top` > `bottom`.
+  /// Precomputes the four clipping edges with inward-pointing normals.
   static List<ClipEdge> _precomputeClipEdgesFromRect(
     double left,
-    double top, // The maximum Y value
+    double top,
     double right,
-    double bottom, // The minimum Y value
+    double bottom,
   ) {
     return [
-      // Left edge, normal points left (outward).
-      ClipEdge(Vector2(-1.0, 0.0), Vector2(left, top)),
-      // Bottom edge, normal points down (outward).
-      ClipEdge(Vector2(0.0, -1.0), Vector2(left, bottom)),
-      // Right edge, normal points right (outward).
-      ClipEdge(Vector2(1.0, 0.0), Vector2(right, top)),
-      // Top edge, normal points up (outward).
-      ClipEdge(Vector2(0.0, 1.0), Vector2(left, top)),
+      ClipEdge(Vector2(1, 0), Vector2(left, top)),    // Left edge
+      ClipEdge(Vector2(-1, 0), Vector2(right, top)),  // Right edge
+      ClipEdge(Vector2(0, -1), Vector2(left, top)),   // Top edge
+      ClipEdge(Vector2(0, 1), Vector2(left, bottom)), // Bottom edge
     ];
   }
 
-  /// Clips a single line segment against a set of convex clipping planes.
-  ///
-  /// This implementation assumes the clipping planes have outward-pointing normals.
-  List<Vector2>? _clipSegment(
-      Vector2 p0, Vector2 p1, List<ClipEdge> clipPlanes) {
-    double tE = 0.0; // The largest t-value for an "entering" intersection.
-    double tL = 1.0; // The smallest t-value for a "leaving" intersection.
+  /// Clips an input polygon (list of vertices) against a single clipping edge.
+  List<Vector2> _clipAgainstEdge(List<Vector2> vertices, ClipEdge edge) {
+    final List<Vector2> outputList = [];
+    if (vertices.isEmpty) return outputList;
 
-    final direction = p1 - p0;
+    Vector2 s = vertices.last;
+    for (final Vector2 p in vertices) {
+      // With INWARD normals, a positive dot product means inside.
+      final bool s_inside = edge.normal.dot(s - edge.pointOnEdge) >= 0;
+      final bool p_inside = edge.normal.dot(p - edge.pointOnEdge) >= 0;
 
-    if (direction.length2 < epsilon) {
-      // The segment is a point. Check if it's inside all clip planes.
-      for (final clipPlane in clipPlanes) {
-        // With outward normals, a positive dot product means the point is outside.
-        if (clipPlane.normal.dot(p0 - clipPlane.pointOnEdge) > 0) {
-          return null; // Point is outside.
+      if (s_inside && p_inside) {
+        outputList.add(p);
+      } else if (s_inside && !p_inside) {
+        outputList.add(_getIntersection(s, p, edge));
+      } else if (!s_inside && p_inside) {
+        outputList.add(_getIntersection(s, p, edge));
+        outputList.add(p);
+      }
+      s = p;
+    }
+    return outputList;
+  }
+
+  /// Calculates the intersection point of line segment SP with a clip edge.
+  Vector2 _getIntersection(Vector2 s, Vector2 p, ClipEdge edge) {
+    final Vector2 direction = p - s;
+    final double denominator = edge.normal.dot(direction);
+    if (denominator.abs() < _epsilon) return s;
+    final double t = -edge.normal.dot(s - edge.pointOnEdge) / denominator;
+    return s + direction * t;
+  }
+
+  /// Cleans the final list of vertices by removing duplicates and checks for degeneracy.
+  Polyline? _cleanAndCreatePolyline(List<Vector2> vertices) {
+    if (vertices.length < 3) return null;
+
+    final List<Vector2> uniqueVertices = [];
+    final double epsilonSq = _epsilon * _epsilon;
+
+    if (vertices.isNotEmpty) {
+      uniqueVertices.add(vertices.first);
+      for (int i = 1; i < vertices.length; i++) {
+        if ((vertices[i] - uniqueVertices.last).length2 > epsilonSq) {
+          uniqueVertices.add(vertices[i]);
         }
       }
-      return [p0, p0]; // Point is inside.
     }
 
-    for (final clipPlane in clipPlanes) {
-      final numerator = clipPlane.normal.dot(p0 - clipPlane.pointOnEdge);
-      final denominator = clipPlane.normal.dot(direction);
-
-      if (denominator.abs() < epsilon) {
-        // Line is parallel to the clipping edge.
-        // If the numerator is positive, the line is parallel and outside.
-        if (numerator > 0) {
-          return null;
-        }
-        continue; // Parallel and inside.
-      }
-
-      final t = -numerator / denominator;
-
-      // --- Logic for Outward-Facing Normals ---
-      if (denominator > 0) {
-        // The line segment is heading "out" of this edge (leaving).
-        // We are interested in the smallest leaving t-value.
-        tL = tL < t ? tL : t; // tL = min(tL, t)
-      } else {
-        // The line segment is heading "in" across this edge (entering).
-        // We are interested in the largest entering t-value.
-        tE = tE > t ? tE : t; // tE = max(tE, t)
-      }
+    if (uniqueVertices.length > 1 &&
+        (uniqueVertices.last - uniqueVertices.first).length2 < epsilonSq) {
+      uniqueVertices.removeLast();
     }
 
-    // If the entering t-value is after the leaving t-value, the segment is entirely outside.
-    if (tE > tL) {
-      return null;
-    }
+    if (uniqueVertices.length < 3) return null;
 
-    // Calculate the clipped segment endpoints from the final t-values.
-    final clippedP0 = p0 + direction * tE;
-    final clippedP1 = p0 + direction * tL;
-    return [clippedP0, clippedP1];
+    return Polyline.fromVector2(uniqueVertices);
   }
 
   /// Clips a closed polyline against the precomputed clipping edges.
   Polyline? clip(Polyline polyline) {
-    if (polyline.length < 3) {
-      return null;
+    if (polyline.length < 3) return null;
+
+    List<Vector2> clippedVertices =
+        List.generate(polyline.length, (i) => polyline.getVector2(i));
+
+    for (final edge in clipEdges) {
+      clippedVertices = _clipAgainstEdge(clippedVertices, edge);
     }
 
-    List<Vector2> clippedVertices = [];
-    final double epsilonSq = epsilon * epsilon;
-
-    // Iterate over all edges of the closed polyline, including the closing edge.
-    for (int i = 0; i < polyline.length; i++) {
-      Vector2 p0 = polyline.getVector2(i);
-      Vector2 p1 = polyline.getVector2((i + 1) % polyline.length);
-
-      List<Vector2>? clippedSegment = _clipSegment(p0, p1, clipEdges);
-
-      if (clippedSegment != null) {
-        // Add the start point of the clipped segment, but only if it's not a
-        // duplicate of the previously added point. This prevents degenerate micro-edges.
-        if (clippedVertices.isEmpty ||
-            (clippedVertices.last - clippedSegment.first).length2 > epsilonSq) {
-          clippedVertices.add(clippedSegment.first);
-        }
-        // Always add the end point of the segment. The next iteration will handle
-        // de-duplication if its start point is the same.
-        clippedVertices.add(clippedSegment.last);
-      }
-    }
-
-    if (clippedVertices.length < 3) {
-      return null;
-    }
-
-    // The clipping process can create collinear or duplicate points. Clean them up.
-    Polyline tempResult = Polyline.fromVector2(clippedVertices);
-    List<int> validIndices = tempResult.getValidVertexIndices();
-
-    if (validIndices.length < 3) {
-      return null;
-    }
-
-    // If vertices were removed, create a final, corrected polyline.
-    if (validIndices.length < tempResult.length) {
-      return Polyline.fromIndices(tempResult, validIndices);
-    } else {
-      // Otherwise, the result is already clean and valid.
-      return tempResult.planeIsValid ? tempResult : null;
-    }
+    return _cleanAndCreatePolyline(clippedVertices);
   }
 
-  /// Creates a clipper for a given rectangular boundary in a Y-up coordinate system.
-  PolylineClipper({required double left, required double bottom, required double right, required double top})
-      : clipEdges = _precomputeClipEdgesFromRect(left, top, right, bottom);
+  PolylineClipper({
+    required double left,
+    required double bottom,
+    required double right,
+    required double top,
+  }) : clipEdges = _precomputeClipEdgesFromRect(left, top, right, bottom);
 }
