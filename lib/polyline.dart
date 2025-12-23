@@ -35,6 +35,12 @@ class Polyline {
     _calculatePlane();
   }
 
+  ///Constructor for creating a Polyline from a Float32List of 3 component vertices
+  /// This is the single point where the plane is calculated.
+  Polyline.fromFloat32List(this._vertices) {
+    _calculatePlane();
+  }
+
   /// Creates a Polyline from a list of 2D points, assuming they lie on the XY plane (z=0).
   Polyline.fromVector2(List<Vector2> points)
       : this._internal(Float32List.fromList(

@@ -1,6 +1,15 @@
 import 'dart:math';
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:vector_math/vector_math_64.dart';
+
+/// Utility extensions for creating Vector views on buffers.
+extension VectorView on Vector3 {
+  /// Creates a [Vector3] view of a [buffer] at a given [offset].
+  static Vector3 view(Float32List buffer, int offset) {
+    return Vector3.fromBuffer(buffer.buffer, offset);
+  }
+}
 
 /// Utility extensions for 3D vector operations.
 extension Dist2D on Vector3 {
@@ -348,4 +357,17 @@ Vector3? intersectRayPlaneFromPointAndNormal(
     ..normalize();
 
   return (right: right, up: up, forward: forward);
+}
+
+extension Float32ListVectorView on Float32List {
+  /// Creates a non-allocating [Vector3] view into the list starting at
+  /// the given float [offset].
+  ///
+  /// The offset is in floats, not bytes. For example, an offset of 3
+  /// will view the second vector in a tightly packed list of vertices.
+  Vector3 vector3View(int offset) {
+    // Vector3.fromBuffer expects a byte offset. Since each float in a
+    // Float32List is 4 bytes, we multiply the float offset by 4.
+    return Vector3.fromBuffer(buffer, offset * 4);
+  }
 }
